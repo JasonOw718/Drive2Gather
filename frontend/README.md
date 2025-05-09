@@ -108,7 +108,7 @@ The admin panel uses nested routes under `/admin`, with each page as a child rou
 
 ---
 
-## 📝 Summary Table
+## 📝 ADMIN Summary Table
 
 | Page Name                | File Path                                                                 | Data Source File                                                      |
 |--------------------------|--------------------------------------------------------------------------|-----------------------------------------------------------------------|
@@ -121,4 +121,90 @@ The admin panel uses nested routes under `/admin`, with each page as a child rou
 
 ---
 
-If you have any questions, check the relevant file or ask the team lead!
+🚗 Passenger & Driver Side Pages
+Routing Overview
+The main routes for passenger and driver pages are also defined in `Ride2Gather/src/router/index.js`.
+These routes are mapped to their respective Vue components under the /components/pages/passanger/ and /components/pages/driver/ directories.
+Passenger Pages
+| Route Path | Vue File Location | Purpose | Data Source File |
+|---------------------------|----------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|-----------------------------------------------------------------------|
+| /find-ride | `Ride2Gather/src/components/pages/passanger/FindRide.vue` | Allows passengers to search for available rides. | `Ride2Gather/src/components/stores/ride.js` |
+| /ride-list | `Ride2Gather/src/components/pages/passanger/RideList.vue` | Displays a list of rides available to the passenger. | `Ride2Gather/src/components/stores/ride.js` |
+| /ride-detail | `Ride2Gather/src/components/pages/passanger/RideDetail.vue` | Shows detailed information about a selected ride. | `Ride2Gather/src/components/stores/ride.js` |
+| /ridebooked | `Ride2Gather/src/components/pages/passanger/Ridebooked.vue` | Shows the passenger's booked rides. | `Ride2Gather/src/components/stores/ride.js` |
+| /otw | `Ride2Gather/src/components/pages/passanger/Otwpage.vue` | Displays the \"On The Way\" status for a booked ride. | `Ride2Gather/src/components/stores/ride.js` |
+| /ride-complete | `Ride2Gather/src/components/pages/passanger/RidecompleteP.vue` | Shows the ride completion page for passengers. | `Ride2Gather/src/components/stores/ride.js` |
+| /profile-passenger | `Ride2Gather/src/components/pages/passanger/ProfileP.vue` | Displays the passenger's profile information. | `Ride2Gather/src/components/stores/user.js` |
+| /change-password | `Ride2Gather/src/components/pages/passanger/ChangePassword.vue` | Allows the passenger to change their password. | `Ride2Gather/src/components/stores/user.js` |
+| /donation | `Ride2Gather/src/components/pages/passanger/Donation.vue` | Donation page for passengers. | `Ride2Gather/src/components/stores/donation.js` |
+| /donate-complete | `Ride2Gather/src/components/pages/passanger/donatecomplete.vue` | Shows donation completion status. | `Ride2Gather/src/components/stores/donation.js` |
+| /Reportpage | `Ride2Gather/src/components/pages/passanger/Report_Psg.vue` | Allows passengers to submit a report. | `Ride2Gather/src/components/stores/report.js` |
+| /login-register | `Ride2Gather/src/components/pages/passanger/LoginRegister.vue` | Combined login/register page for passengers. | `Ride2Gather/src/components/stores/user.js` |
+| /login | `Ride2Gather/src/components/pages/passanger/Login.vue` | Login page for passengers. | `Ride2Gather/src/components/stores/user.js` |
+| /forgot-password | `Ride2Gather/src/components/pages/passanger/ForgotPassword.vue` | Password recovery for passengers. | `Ride2Gather/src/components/stores/user.js` |
+| /register-passenger | `Ride2Gather/src/components/pages/passanger/RegisterP.vue` | Registration page for new passengers. | `Ride2Gather/src/components/stores/user.js` |
+
+---
+
+Driver Pages
+| Route Path | Vue File Location | Purpose | Data Source File |
+|---------------------------|----------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|-----------------------------------------------------------------------|
+| /create-ride | `Ride2Gather/src/components/pages/driver/CreateRide.vue` | Allows drivers to create a new ride. | `Ride2Gather/src/components/stores/ride.js` |
+| /profile-driver | `Ride2Gather/src/components/pages/driver/ProfileD.vue` | Displays the driver's profile information. | `Ride2Gather/src/components/stores/user.js` |
+| /register-driver | `Ride2Gather/src/components/pages/driver/RegisterD.vue` | Registration page for new drivers. | `Ride2Gather/src/components/stores/user.js` |
+| /ride-detail-driverside | `Ride2Gather/src/components/pages/driver/RideDetailD.vue` | Shows ride details from the driver's perspective. | `Ride2Gather/src/components/stores/ride.js` |
+| /dropoff | `Ride2Gather/src/components/pages/driver/Dropoff.vue` | Page for drivers to confirm passenger drop-off. | `Ride2Gather/src/components/stores/ride.js` |
+| /ridecomplete-driver | `Ride2Gather/src/components/pages/driver/RidecompleteD.vue` | Shows ride completion page for drivers. | `Ride2Gather/src/components/stores/ride.js` |
+| /Reportpage-driver | `Ride2Gather/src/components/pages/driver/Report_D_side.vue` | Allows drivers to submit a report. | `Ride2Gather/src/components/stores/report.js` |
+
+---
+
+🗂️ Mock Data Sources for Passenger & Driver
+Rides:
+All ride-related mock data is in `Ride2Gather/src/components/stores/ride.js`.
+Users (Passenger/Driver):
+All user-related mock data is in `Ride2Gather/src/components/stores/user.js`.
+Reports:
+All report-related mock data is in `Ride2Gather/src/components/stores/report.js`.
+Donations:
+All donation-related mock data is in `Ride2Gather/src/components/stores/donation.js`.
+
+---
+
+📝 How to Find and Edit Pages
+To view or edit a page:
+Click the file path in this document (e.g., `FindRide.vue`) to jump directly to the file in your editor.
+To update mock data:
+Edit the relevant store file:
+Rides: `ride.js`
+Users: `user.js`
+Reports: `report.js`
+Donations: `donation.js`
+
+---
+
+🧭 Summary Table: Passenger & Driver Pages
+| Page Name | File Path | Data Source File |
+|--------------------------|--------------------------------------------------------------------------|-----------------------------------------------------------------------|
+| Find Ride | `FindRide.vue` | `ride.js` |
+| Ride List | `RideList.vue` | `ride.js` |
+| Ride Detail (Passenger) | `RideDetail.vue` | `ride.js` |
+| Ride Booked | `Ridebooked.vue` | `ride.js` |
+| On The Way | `Otwpage.vue` | `ride.js` |
+| Ride Complete (Passenger)| `RidecompleteP.vue` | `ride.js` |
+| Passenger Profile | `ProfileP.vue` | `user.js` |
+| Change Password | `ChangePassword.vue` | `user.js` |
+| Donation | `Donation.vue` | `donation.js` |
+| Donate Complete | `donatecomplete.vue` | `donation.js` |
+| Passenger Report | `Report_Psg.vue` | `report.js` |
+| Login/Register | `LoginRegister.vue` | `user.js` |
+| Login | `Login.vue` | `user.js` |
+| Forgot Password | `ForgotPassword.vue` | `user.js` |
+| Register Passenger | `RegisterP.vue` | `user.js` |
+| Create Ride | `CreateRide.vue` | `ride.js` |
+| Driver Profile | `ProfileD.vue` | `user.js` |
+| Register Driver | `RegisterD.vue` | `user.js` |
+| Ride Detail (Driver) | `RideDetailD.vue` | `ride.js` |
+| Dropoff | `Dropoff.vue` | `ride.js` |
+| Ride Complete (Driver) | `RidecompleteD.vue` | `ride.js` |
+| Driver Report | `Report_D_side.vue` | `report.js` |
