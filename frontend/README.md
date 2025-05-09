@@ -6,11 +6,10 @@ Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://
 
 # Ride2Gather Admin Panel – Project Structure & Routing Guide
 
-## Running the Frontend
-cd frontend
-npm install
-npm run serve
-
+🚀 Running the Frontend
+<pre>cd frontend</pre>
+<pre>npm install</pre>
+<pre>npm run serve</pre>
 ## 📁 Project Structure Overview
 
 All main source files are under `Ride2Gather/src/`.
