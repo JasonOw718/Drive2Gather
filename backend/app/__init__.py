@@ -1,31 +1,30 @@
-import os
 from flask import Flask
-from flask_bcrypt import Bcrypt
-from flask_login import LoginManager # type: ignore
-from flask_migrate import Migrate # type: ignore
-from flask_sqlalchemy import SQLAlchemy # type: ignore
+from flask_cors import CORS
+from .models import db
+import os
 
-db = SQLAlchemy()
-bcrypt = Bcrypt()
-loginManager = LoginManager()
-migrate = Migrate()
-
-def create_app():
-    app = Flask(__name__)
-    app.config['SECRET_KEY'] = 'test'
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///new.db'
+def create_app(config_name="default"):
+    app = Flask(__name__, instance_relative_config=True)
+    
+    # Enable CORS
+    CORS(app)
+    
+    # Configure the SQLAlchemy database
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
+        'DATABASE_URI', 'sqlite:///' + os.path.join(app.instance_path, 'drive2gather.sqlite')
+    )
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['SQLALCHEMY_RECORD_QUERIES'] = True
-    app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-for-development-only')
 
+    # Ensure the instance folder exists
+    os.makedirs(app.instance_path, exist_ok=True)
+
+    # Initialize the database
     db.init_app(app)
-    bcrypt.init_app(app)
-    loginManager.init_app(app)
-    loginManager.login_view = 'main.login'
-    loginManager.login_message_category = 'info'
-    migrate.init_app(app, db)
-
-    from app import routes
-    app.register_blueprint(routes.bp)
-
+    
+    # Sample route to test the application
+    @app.route('/')
+    def index():
+        return {'message': 'Welcome to Drive2Gather API!'}
+    
     return app
