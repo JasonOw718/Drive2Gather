@@ -63,6 +63,24 @@ def login():
     
     return jsonify(auth_data), 200
 
+@auth_bp.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    """Send password reset email"""
+    data = request.json
+    
+    # Validate required fields
+    if 'email' not in data:
+        return jsonify({"error": "Missing required field: email"}), 400
+    
+    # Check if user exists
+    email = data['email']
+    result, error = auth_service.send_password_reset_email(email)
+    
+    if error:
+        return jsonify({"error": error}), 400
+    
+    return jsonify({"message": "Password reset email sent successfully"}), 200
+
 @auth_bp.route('/drivers', methods=['POST'])
 def signup_driver():
     """Create a new driver account"""

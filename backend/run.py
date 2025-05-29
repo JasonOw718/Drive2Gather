@@ -1,19 +1,34 @@
-from app import create_app
+from flask import Flask
+from flask_cors import CORS
 from app.models import db
+from app import mail
+from config import Config
+
+# Initialize Config singleton
+config = Config()
+
+# Setup Flask application
+app = Flask(__name__)
+app.config.from_mapping(config.settings)
+
+# Enable CORS
+CORS(app)
+
+# Initialize extensions
+db.init_app(app)
+mail.init_app(app)
+
+# Register blueprints
 from app.routes.auth_routes import auth_bp
-import os
+from app.routes.ride_routes import ride_bp
 
-app = create_app()
+app.register_blueprint(auth_bp, url_prefix='/api/auth')
+app.register_blueprint(ride_bp, url_prefix='/api/rides')
 
-# Register blueprints with prefix
-app.register_blueprint(auth_bp, url_prefix='/auth')
+# Sample route to test the application
+@app.route('/')
+def index():
+    return {'message': 'Welcome to Drive2Gather API!'}
 
-# Ensure the instance folder exists
-os.makedirs(os.path.join(os.path.dirname(__file__), 'instance'), exist_ok=True)
-
-# Create tables if they don't exist
-with app.app_context():
-    db.create_all()
-
-if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+if __name__ == '__main__':
+    app.run(debug=config.get_config('DEBUG'))

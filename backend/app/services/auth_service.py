@@ -1,8 +1,14 @@
 import jwt
 import datetime
+import logging
 from werkzeug.security import check_password_hash, generate_password_hash
 from app.models import User, UserRole, Driver, Passenger, db
 from flask import current_app
+from flask_mail import Message
+from app import mail
+
+# Configure logging
+logger = logging.getLogger('auth_service')
 
 def register_user(name, email, phone, password):
     """Register a new user"""
@@ -59,6 +65,58 @@ def login_user(email, password):
         }
     }, None
 
+def send_password_reset_email(email):
+    """
+    Send a password reset email
+    
+    Args:
+        email (str): User's email address
+        
+    Returns:
+        tuple: (success, error)
+    """
+    # Check if user exists
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return False, "Email not registered"
+    
+    try:
+        # In a real app, you would generate a secure token and include it in the URL
+        # For this simplified version, we're just sending a dummy email
+        reset_url = "https://drive2gather.com/reset-password?dummy=1"
+        
+        # Create message
+        msg = Message(
+            subject="Drive2Gather Password Reset",
+            recipients=[email],
+            body=f"""
+Hello {user.name},
+
+You have requested to reset your password. Please click on the link below to reset your password:
+
+{reset_url}
+
+If you did not request a password reset, please ignore this email.
+
+Best regards,
+Drive2Gather Team
+            """,
+            html=f"""
+<p>Hello {user.name},</p>
+<p>You have requested to reset your password. Please click on the link below to reset your password:</p>
+<p><a href="{reset_url}">Reset Password</a></p>
+<p>If you did not request a password reset, please ignore this email.</p>
+<p>Best regards,<br>Drive2Gather Team</p>
+            """
+        )
+        
+        # Send email
+        mail.send(msg)
+        
+        return True, None
+    except Exception as e:
+        return False, f"Failed to send email: {str(e)}"
+
 def register_driver(name, email, phone, password, license_number, car_number, car_type, car_color):
     """Register a new driver (creates user + promotes to driver)"""
     # Check if user already exists
@@ -109,19 +167,32 @@ def register_driver(name, email, phone, password, license_number, car_number, ca
 
 def generate_token(user):
     """Generate JWT token"""
+    logger.info(f"Generating token for user: {user.user_id} ({user.name})")
+    
     payload = {
-        'sub': user.user_id,
+        'sub': str(user.user_id),  # Convert user_id to string to satisfy PyJWT requirements
         'name': user.name,
         'email': user.email,
         'iat': datetime.datetime.utcnow(),
         'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)
     }
     
-    return jwt.encode(
-        payload,
-        current_app.config.get('SECRET_KEY'),
-        algorithm='HS256'
-    )
+    logger.info(f"Token payload: {payload}")
+    
+    secret_key = current_app.config.get('SECRET_KEY')
+    logger.info(f"Using SECRET_KEY: {secret_key[:5]}..." if secret_key else "SECRET_KEY is None!")
+    
+    try:
+        token = jwt.encode(
+            payload,
+            secret_key,
+            algorithm='HS256'
+        )
+        logger.info(f"Token generated successfully: {token[:10]}...{token[-10:] if len(token) > 20 else ''}")
+        return token
+    except Exception as e:
+        logger.error(f"Error generating token: {str(e)}")
+        raise
 
 def get_role_code(role_name):
     """Convert role name to numeric code"""
