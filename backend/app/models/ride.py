@@ -25,6 +25,7 @@ class PassengerRide(db.Model):
     
     user_id = Column(Integer, ForeignKey('user.user_id'), nullable=False)
     ride_id = Column(Integer, ForeignKey('ride.ride_id'), nullable=False)
+    status = Column(String(20), default="pending")  # pending, accepted, rejected, completed
     
     # Create a composite primary key
     __table_args__ = (
