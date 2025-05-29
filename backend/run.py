@@ -18,6 +18,10 @@ CORS(app)
 db.init_app(app)
 mail.init_app(app)
 
+# Create database tables if they don't exist
+with app.app_context():
+    db.create_all()
+
 # Register blueprints
 from app.routes.auth_routes import auth_bp
 from app.routes.ride_routes import ride_bp

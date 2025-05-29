@@ -26,17 +26,12 @@ def signup():
     if error:
         return jsonify({"error": error}), 400
     
-    # Get user role code
-    role_code = 0  # Default to passenger
-    
     # Format the response
     response = {
-        "userID": user.user_id,
         "name": user.name,
         "email": user.email,
         "phone": user.phone,
-        "role": role_code,
-        "createdAt": datetime.datetime.utcnow().isoformat() + "Z"
+        "role": "passenger"
     }
     
     return jsonify(response), 201
@@ -62,6 +57,29 @@ def login():
         return jsonify({"error": error}), 401
     
     return jsonify(auth_data), 200
+
+@auth_bp.route('/change-password', methods=['POST'])
+def change_password():
+    """Change user password"""
+    data = request.json
+    
+    # Validate required fields
+    required_fields = ['userId', 'oldPassword', 'newPassword']
+    for field in required_fields:
+        if field not in data:
+            return jsonify({"error": f"Missing required field: {field}"}), 400
+    
+    # Change password
+    success, error = auth_service.change_password(
+        user_id=data['userId'],
+        old_password=data['oldPassword'],
+        new_password=data['newPassword']
+    )
+    
+    if error:
+        return jsonify({"error": error}), 400
+    
+    return jsonify({"message": "Password changed successfully"}), 200
 
 @auth_bp.route('/forgot-password', methods=['POST'])
 def forgot_password():

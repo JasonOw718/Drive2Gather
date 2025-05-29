@@ -50,7 +50,7 @@ def login_user(email, password):
     
     # Get user role
     user_role = UserRole.query.filter_by(user_id=user.user_id).first()
-    role_code = get_role_code(user_role.role_name) if user_role else 0
+    role_name = user_role.role_name if user_role else "passenger"
 
     # Generate token
     token = generate_token(user)
@@ -59,11 +59,45 @@ def login_user(email, password):
         "token": token,
         "expiresIn": 3600,
         "user": {
-            "userID": user.user_id,
             "name": user.name,
-            "role": role_code
+            "role": role_name
         }
     }, None
+
+def change_password(user_id, old_password, new_password):
+    """
+    Change user password
+    
+    Args:
+        user_id (str): User ID
+        old_password (str): Current password
+        new_password (str): New password
+        
+    Returns:
+        tuple: (success, error)
+    """
+    try:
+        # Get user by ID
+        user = User.query.filter_by(user_id=user_id).first()
+        if not user:
+            return False, "User not found"
+        
+        # Verify old password
+        if not check_password_hash(user.password, old_password):
+            return False, "Current password is incorrect"
+        
+        # Validate new password (you might want to add more validation rules)
+        if len(new_password) < 8:
+            return False, "New password must be at least 8 characters long"
+        
+        # Hash and update the new password
+        user.password = generate_password_hash(new_password)
+        db.session.commit()
+        
+        return True, None
+    except Exception as e:
+        db.session.rollback()
+        return False, str(e)
 
 def send_password_reset_email(email):
     """
@@ -153,16 +187,14 @@ def register_driver(name, email, phone, password, license_number, car_number, ca
     db.session.commit()
     
     return {
-        "userID": new_user.user_id,
         "name": new_user.name,
         "email": new_user.email,
         "phone": new_user.phone,
-        "role": 2,  # Driver role code
+        "role": "driver",
         "licenseNumber": driver.license_number,
         "carNumber": driver.car_number,
         "carType": driver.car_type,
-        "carColour": driver.car_color,
-        "createdAt": datetime.datetime.utcnow().isoformat() + "Z"
+        "carColour": driver.car_color
     }, None
 
 def generate_token(user):

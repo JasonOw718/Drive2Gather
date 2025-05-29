@@ -17,7 +17,6 @@ class User(db.Model):
     notifications = relationship("Notification", backref="user")
     messages = relationship("Message", backref="user")
     passenger_rides = relationship("PassengerRide", backref="user")
-    driver_rides = relationship("Ride", backref="user")
     donations = relationship("Donation", foreign_keys="Donation.user_id", backref="user")
 
 class UserRole(db.Model):
@@ -62,3 +61,4 @@ class Driver(db.Model):
     car_color = Column(String(30))
     
     user = relationship("User", backref="driver_profile")
+    rides = relationship("Ride", backref="driver_user", foreign_keys="Ride.driver_id")
