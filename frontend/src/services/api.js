@@ -53,9 +53,28 @@ export const authService = {
 
 // Ride services
 export const rideService = {
-  // Get all rides
-  getAllRides(page = 1, size = 20) {
-    return apiClient.get(`/rides?page=${page}&size=${size}`);
+  // Get all rides with filtering
+  getAllRides(options = {}) {
+    const { 
+      page = 1, 
+      size = 20, 
+      starting_location = '', 
+      dropoff_location = '', 
+      request_time = '', 
+      seats = '' 
+    } = options;
+    
+    // Build query parameters
+    const params = new URLSearchParams();
+    params.append('page', page);
+    params.append('size', size);
+    
+    if (starting_location) params.append('starting_location', starting_location);
+    if (dropoff_location) params.append('dropoff_location', dropoff_location);
+    if (request_time) params.append('request_time', request_time);
+    if (seats) params.append('seats', seats);
+    
+    return apiClient.get(`/rides?${params.toString()}`);
   },
   
   // Get ride by ID

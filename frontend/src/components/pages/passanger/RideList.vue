@@ -12,14 +12,28 @@
           {{ to }}
         </div>
         <div class="text-sm text-[#8C8C8C] font-normal text-left" style="font-family: 'Poppins', sans-serif;">
-          {{ time }} | {{ seatsLabel }}
+          {{ formatDateDisplay(date) }} | {{ time }} | {{ seatsLabel }}
         </div>
       </div>
     </div>
 
+    <!-- Loading state -->
+    <div v-if="loading" class="flex justify-center items-center h-64">
+      <svg class="animate-spin h-12 w-12 text-[#C77DFF]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+      </svg>
+    </div>
+
+    <!-- Error state -->
+    <div v-else-if="error" class="text-center text-red-500 mt-10">
+      {{ error }}
+      <button @click="loadRides" class="block mx-auto mt-4 text-[#C77DFF] underline">Try Again</button>
+    </div>
+
     <!-- Ride List -->
-    <div v-if="filteredRides.length > 0" class="flex flex-col gap-5">
-      <div v-for="(ride, idx) in filteredRides" :key="idx" @click="selectRide(ride)" class="rounded-2xl shadow-md p-4 bg-white cursor-pointer transition hover:shadow-lg">
+    <div v-else-if="filteredRides.length > 0" class="flex flex-col gap-5">
+      <div v-for="ride in filteredRides" :key="ride.id" @click="selectRide(ride)" class="rounded-2xl shadow-md p-4 bg-white cursor-pointer transition hover:shadow-lg">
         <!-- First Row: Time & Timeline & Locations -->
         <div class="flex items-center gap-4 mb-6">
           <div class="text-base font-semibold text-[#303030] w-14 text-left" style="font-family: 'Poppins', sans-serif; font-weight: 500;">{{ ride.departureTime }}</div>
@@ -41,12 +55,12 @@
           <div class="flex flex-col flex-1">
             <div class="text-sm font-medium text-[#303030] text-left" style="font-family: 'Poppins', sans-serif; font-weight: 500;">{{ ride.driverName }}</div>
             <div class="flex items-center gap-1 mt-1">
-                <template v-for="n in ride.seatAvailable" :key="'seat-' + n">
-                    <font-awesome-icon
-                        icon="fa-solid fa-chair"
-                        :class="n <= ride.seatFilled ? 'text-[#C77DFF] text-lg' : 'text-[#8C8C8C] text-lg'"
-                    />
-                </template>
+              <template v-for="n in ride.seatAvailable" :key="'seat-' + n">
+                <font-awesome-icon
+                  icon="fa-solid fa-chair"
+                  :class="n <= ride.seatFilled ? 'text-[#C77DFF] text-lg' : 'text-[#8C8C8C] text-lg'"
+                />
+              </template>
             </div>
           </div>
         </div>
@@ -59,55 +73,103 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { rideList } from '../../../stores/rideList'
 import { usePassengerInputStore } from '../../../stores/passengerInput'
+import { rideService } from '../../../services/api'
 
 const router = useRouter()
 const route = useRoute()
 
-// Assume these are passed as route query params
+// Get search parameters from query params
 const from = ref(route.query.from || 'From')
 const to = ref(route.query.to || 'To')
+const date = ref(route.query.date || new Date().toISOString().split('T')[0])
 const time = ref(route.query.time || '09:00')
 const seats = ref(Number(route.query.seats) || 1)
 
 const passengerInputStore = usePassengerInputStore()
+const rides = ref([])
+const loading = ref(true)
+const error = ref(null)
 
-function parseTime(str) {
-  const [h, m] = str.split(':').map(Number)
-  return h * 60 + m
+// Format time for display (HH:MM)
+function formatTime(isoTime) {
+  if (!isoTime) return '';
+  const date = new Date(isoTime);
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
-const filteredRides = computed(() => {
-  const baseTime = parseTime(time.value)
-  const seatsNeeded = Number(passengerInputStore.seats)
-  return rideList
-    .filter(ride => {
-      const rideTime = parseTime(ride.departureTime)
-      const availableSeats = Number(ride.seatAvailable) - Number(ride.seatFilled)
-      return (
-        ride.from === from.value &&
-        ride.to === to.value &&
-        rideTime >= baseTime &&
-        rideTime <= baseTime + 120 &&
-        availableSeats >= seatsNeeded
-      )
-    })
-    .sort((a, b) => parseTime(a.departureTime) - parseTime(b.departureTime))
-})
+// Format date for display
+function formatDateDisplay(dateStr) {
+  if (!dateStr) return '';
+  const options = { weekday: 'short', month: 'short', day: 'numeric' };
+  return new Date(dateStr).toLocaleDateString('en-US', options);
+}
 
-const dateLabel = computed(() => {
-  // For demo, always show 'Today'.
-  return 'Today'
-})
+// Load rides from API
+async function loadRides() {
+  loading.value = true;
+  error.value = null;
+  
+  try {
+    // Format date and time for API request
+    const requestTime = `${date.value}T${time.value}:00`;
+    
+    const response = await rideService.getAllRides({
+      starting_location: from.value,
+      dropoff_location: to.value,
+      request_time: requestTime,
+      seats: seats.value.toString(),
+      page: 1,
+      size: 50
+    });
+    
+    rides.value = response.data.rides.map(ride => ({
+      id: ride.rideID,
+      departureTime: formatTime(ride.requestTime),
+      from: ride.startingLocation,
+      to: ride.dropoffLocation,
+      driverName: ride.driverName,
+      driverAvatar: '/src/assets/images/avatar.png', // Default avatar
+      seatAvailable: ride.Passenger_count,
+      seatFilled: 0, // This would need to be calculated from passengers if available
+      driverPhone: '123-456-7890', // This would come from the driver details
+      driverCarType: 'Sedan', // This would come from the driver details
+      carPlate: 'ABC123', // This would come from the driver details
+      carPhoto: '/src/assets/images/car.png', // Default car image
+      driverID: ride.driverID,
+      status: ride.status,
+      requestTime: ride.requestTime
+    }));
+  } catch (err) {
+    console.error('Error loading rides:', err);
+    error.value = 'Failed to load rides. Please try again.';
+  } finally {
+    loading.value = false;
+  }
+}
+
+// Load rides when component mounts
+onMounted(() => {
+  loadRides();
+});
+
+// Format display values
 const seatsLabel = computed(() => {
   return seats.value === 1 ? '1 Passenger' : `${seats.value} Passengers`
+})
+
+// Filter rides client-side if needed for additional criteria
+const filteredRides = computed(() => {
+  if (loading.value) return [];
+  if (error.value) return [];
+  return rides.value;
 })
 
 function selectRide(ride) {
   router.push({
     name: 'RideDetail',
     query: {
+      id: ride.id,
       departureTime: ride.departureTime,
       from: ride.from,
       to: ride.to,
@@ -118,7 +180,9 @@ function selectRide(ride) {
       seatAvailable: ride.seatAvailable,
       seatFilled: ride.seatFilled,
       driverAvatar: ride.driverAvatar,
-      carPhoto: ride.carPhoto
+      carPhoto: ride.carPhoto,
+      driverID: ride.driverID,
+      requestTime: ride.requestTime
     }
   })
 }

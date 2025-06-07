@@ -8,13 +8,17 @@ def format_time_simple(dt):
     """Format datetime to simple time format (e.g., '05:00 PM')"""
     return dt.strftime("%I:%M %p").lstrip("0")
 
-def get_all_rides(page=1, size=20):
+def get_all_rides(page=1, size=20, starting_location=None, dropoff_location=None, request_time=None, seats=None):
     """
-    Get all rides with pagination, excluding completed rides
+    Get all rides with pagination and filtering, excluding completed rides
     
     Args:
         page (int): Page number (default: 1)
         size (int): Page size (default: 20)
+        starting_location (str, optional): Filter by starting location
+        dropoff_location (str, optional): Filter by dropoff location
+        request_time (str, optional): Filter by request time
+        seats (int, optional): Filter by available seats
         
     Returns:
         dict: Dictionary containing rides and pagination info
@@ -22,16 +26,42 @@ def get_all_rides(page=1, size=20):
     # Calculate offset
     offset = (page - 1) * size
     
-    # Get total count (exclude completed rides)
-    total = Ride.query.filter(Ride.status != "completed").count()
+    # Start building the query with the base filter
+    query = Ride.query.filter(Ride.status != "completed")
+    
+    # Apply additional filters if provided
+    if starting_location:
+        query = query.filter(Ride.starting_location.ilike(f'%{starting_location}%'))
+    
+    if dropoff_location:
+        query = query.filter(Ride.dropoff_location.ilike(f'%{dropoff_location}%'))
+    
+    if request_time:
+        # Parse the time string - assuming ISO format
+        try:
+            time_obj = datetime.fromisoformat(request_time.replace('Z', '+00:00'))
+            # Filter for rides on the same day
+            from datetime import timedelta
+            start_of_day = datetime(time_obj.year, time_obj.month, time_obj.day, 0, 0, 0)
+            end_of_day = start_of_day + timedelta(days=1)
+            query = query.filter(Ride.request_time >= start_of_day, Ride.request_time < end_of_day)
+        except ValueError:
+            # If date parsing fails, ignore this filter
+            pass
+    
+    if seats and seats.isdigit():
+        seats_num = int(seats)
+        query = query.filter(Ride.passenger_count >= seats_num)
+    
+    # Get total count with filters applied
+    total = query.count()
     
     # Calculate total pages
     total_pages = (total + size - 1) // size if total > 0 else 1
     
-    # Get rides and their drivers
-    # Use left joins to ensure we get all rides even if driver or user information is missing
+    # Get rides and their drivers with all filters applied
     rides_query = db.session.query(Ride, User.name.label('driver_name'))\
-        .filter(Ride.status != "completed")\
+        .filter(Ride.ride_id.in_([r.ride_id for r in query.all()]))\
         .outerjoin(Driver, Ride.driver_id == Driver.user_id)\
         .outerjoin(User, Driver.user_id == User.user_id)\
         .order_by(desc(Ride.request_time))\

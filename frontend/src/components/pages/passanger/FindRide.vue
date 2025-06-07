@@ -22,16 +22,24 @@
       />
     </div>
 
-    <!-- When? (Time Picker) -->
+    <!-- When? (Date and Time Picker) -->
     <div class="mb-6">
       <div class="text-base font-semibold text-[#333333] mb-2 text-left">When?</div>
-      <input
-        v-model="time"
-        type="time"
-        :min="minTime"
-        step="3600"
-        class="w-full border border-gray-200 bg-[#F5F5F5] px-4 py-3 text-base rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-[#C77DFF] text-left"
-      />
+      <div class="flex gap-3 mb-3">
+        <input
+          v-model="date"
+          type="date"
+          :min="minDate"
+          class="flex-1 border border-gray-200 bg-[#F5F5F5] px-4 py-3 text-base rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-[#C77DFF] text-left"
+        />
+        <input
+          v-model="time"
+          type="time"
+          :min="minTime"
+          step="3600"
+          class="flex-1 border border-gray-200 bg-[#F5F5F5] px-4 py-3 text-base rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-[#C77DFF] text-left"
+        />
+      </div>
     </div>
 
     <!-- Seat needed? (Custom Counter Input) -->
@@ -73,10 +81,13 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePassengerInputStore } from '../../../stores/passengerInput'
+import { useUserStore } from '../../../stores/user'
 import RightNavbar from '../rightnavbar.vue'
 
+const userStore = useUserStore()
 const from = ref('')
 const to = ref('')
+const date = ref('')
 const time = ref('')
 const seats = ref(1)
 const loading = ref(false)
@@ -86,19 +97,38 @@ const passengerInputStore = usePassengerInputStore()
 function pad(n) {
   return n < 10 ? '0' + n : n
 }
+
+// Get today's date in YYYY-MM-DD format
+const minDate = computed(() => {
+  const today = new Date()
+  return `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`
+})
+
+// Initialize date to today if not set
+if (!date.value) {
+  date.value = minDate.value
+}
+
 // Compute min time as now, rounded up to next hour
 const minTime = computed(() => {
   const now = new Date()
   let hour = now.getHours()
   let min = now.getMinutes()
-  if (min > 0) hour++
-  return pad(hour) + ':00'
+  
+  // Only enforce min time if the date is today
+  if (date.value === minDate.value) {
+    if (min > 0) hour++
+    return pad(hour) + ':00'
+  }
+  
+  return '00:00'
 })
 
 const isValid = computed(() => {
   return (
     from.value.trim() !== '' &&
     to.value.trim() !== '' &&
+    date.value.trim() !== '' &&
     time.value.trim() !== '' &&
     seats.value >= 1
   )
@@ -111,23 +141,41 @@ function decrement() {
   if (seats.value > 1) seats.value--
 }
 
+// Format date and time for API request
+function formatDateTime() {
+  return `${date.value}T${time.value}:00`
+}
+
 async function onSearch() {
   if (!isValid.value) return
   loading.value = true
-  // Simulate async storing
-  await new Promise(resolve => setTimeout(resolve, 800))
-  passengerInputStore.setInput({
-    from: from.value,
-    to: to.value,
-    time: time.value,
-    seats: seats.value
-  })
-  loading.value = false
-  router.push({ name: 'RideList', query: {
-    from: from.value,
-    to: to.value,
-    time: time.value,
-    seats: seats.value
-  }})
+  
+  try {
+    // Store search parameters
+    passengerInputStore.setInput({
+      from: from.value,
+      to: to.value,
+      date: date.value,
+      time: time.value,
+      seats: seats.value,
+      dateTime: formatDateTime()
+    })
+    
+    // Navigate to ride list with query parameters
+    router.push({ 
+      name: 'RideList', 
+      query: {
+        from: from.value,
+        to: to.value,
+        date: date.value,
+        time: time.value,
+        seats: seats.value
+      }
+    })
+  } catch (error) {
+    console.error('Search error:', error)
+  } finally {
+    loading.value = false
+  }
 }
 </script>

@@ -8,7 +8,7 @@ ride_bp = Blueprint('rides', __name__)
 
 @ride_bp.route('', methods=['GET'])
 def get_rides():
-    """Get all rides with pagination (excluding completed rides)"""
+    """Get all rides with pagination and filtering (excluding completed rides)"""
     # Get pagination parameters
     try:
         page = int(request.args.get('page', 1))
@@ -20,8 +20,21 @@ def get_rides():
     if page < 1 or size < 1:
         return jsonify({"error": "Page and size must be positive integers"}), 400
     
-    # Get rides
-    rides_data = ride_service.get_all_rides(page, size)
+    # Get filter parameters
+    starting_location = request.args.get('starting_location', None)
+    dropoff_location = request.args.get('dropoff_location', None)
+    request_time = request.args.get('request_time', None)
+    seats = request.args.get('seats', None)
+    
+    # Get rides with filters applied
+    rides_data = ride_service.get_all_rides(
+        page, 
+        size, 
+        starting_location, 
+        dropoff_location, 
+        request_time, 
+        seats
+    )
     
     return jsonify(rides_data), 200
 
