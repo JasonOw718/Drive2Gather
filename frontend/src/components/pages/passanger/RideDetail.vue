@@ -59,14 +59,14 @@
         <img src="../../../../assets/images/image.png" alt="Driver Avatar" class="w-10 h-10 rounded-full object-cover border border-gray-200" />
       </div>
 
-      <!-- Contact Driver Row -->
-      <a :href="whatsappLink" target="_blank" class="flex items-center justify-between  py-3 rounded-xl  mb-4 cursor-pointer ">
+      <!-- Chat Room Button -->
+      <div @click="navigateToChatRoom" class="flex items-center justify-between py-3 px-4 rounded-xl mb-4 cursor-pointer bg-gradient-to-r from-[#C77DFF] to-[#B266FF] shadow-sm hover:shadow-md transition-all duration-200">
         <div class="flex items-center gap-2">
-          <font-awesome-icon icon="fa-solid fa-phone" alt="WhatsApp" class="w-4 h-4 text-[#303030]"/>
-          <span class="text-base font-medium text-[#303030]" style="font-family: 'Poppins', sans-serif;">Contact Driver</span>
+          <font-awesome-icon icon="fa-solid fa-comments" class="w-4 h-4 text-white"/>
+          <span class="text-base font-medium text-white" style="font-family: 'Poppins', sans-serif;">Chat Room</span>
         </div>
-        <font-awesome-icon icon="fa-arrow-right" class="text-[#C77DFF] text-lg" />
-      </a>
+        <font-awesome-icon icon="fa-arrow-right" class="text-white text-lg" />
+      </div>
 
       <!-- Car Detail Row -->
       <div class="flex items-center gap-3 mb-4">
@@ -94,7 +94,7 @@
         - forceHideButton: {{ forceHideButton }}
       -->
       <button 
-        v-if="false"
+        v-if="!fromHistory"
         class="w-full py-3 px-4 rounded-full shadow-md bg-[#C77DFF] text-white text-base font-bold hover:bg-opacity-90 transition-all duration-300 mb-0" 
         style="max-width: 100%;"
         @click="requestRide"
@@ -120,7 +120,7 @@ const passengerInputStore = usePassengerInputStore()
 const rideId = route.params.id
 
 // Force hide button regardless of route - set to true to always hide
-const forceHideButton = true
+const forceHideButton = false
 
 // Check if we're coming from ride history
 const fromHistory = computed(() => {
@@ -176,6 +176,14 @@ async function loadRideDetail() {
   } finally {
     loading.value = false
   }
+}
+
+// Navigate to chat room
+function navigateToChatRoom() {
+  router.push({
+    name: 'ChatRoom',
+    params: { id: rideId }
+  })
 }
 
 async function requestRide() {

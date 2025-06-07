@@ -1,7 +1,7 @@
 import jwt
 import logging
 from functools import wraps
-from flask import request, jsonify, current_app
+from flask import request, jsonify, current_app, g
 from app.models import User, UserRole
 
 # Configure logging
@@ -61,8 +61,18 @@ def token_required(f):
         
         # Get the user
         try:
-            # Convert sub to int since it's stored as string in the token
-            user_id = int(payload['sub'])
+            # Check if 'sub' exists in payload
+            if 'sub' not in payload:
+                logger.error("Token payload missing 'sub' field")
+                return jsonify({"error": "Invalid token: missing user ID"}), 401
+                
+            # Try to convert the user_id to int, with better error handling
+            try:
+                user_id = int(payload['sub'])
+            except (ValueError, TypeError):
+                logger.error(f"Failed to convert user_id to integer: {payload['sub']}")
+                return jsonify({"error": "Invalid user ID format in token"}), 401
+                
             logger.info(f"Looking up user with ID: {user_id}")
             user = User.query.filter_by(user_id=user_id).first()
             
@@ -74,10 +84,13 @@ def token_required(f):
             # Add the user to the request context
             request.user = user
             
+            # Also set in Flask g object for compatibility
+            g.user = user
+            
             return f(*args, **kwargs)
-        except (ValueError, KeyError) as e:
-            logger.error(f"Error extracting user_id from token: {str(e)}")
-            return jsonify({"error": "Invalid token format"}), 401
+        except Exception as e:
+            logger.error(f"Error processing token: {str(e)}")
+            return jsonify({"error": f"Authentication error: {str(e)}"}), 401
     return decorated
 
 def role_required(roles):

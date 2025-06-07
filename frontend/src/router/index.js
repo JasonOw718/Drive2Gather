@@ -23,6 +23,7 @@ import Report_D_side from '../components/pages/driver/Report_D_side.vue'
 import RidecompleteP from '../components/pages/passanger/RidecompleteP.vue'
 import Donation from '../components/pages/passanger/Donation.vue'
 import DonateComplete from '../components/pages/passanger/donatecomplete.vue'
+import ChatRoom from '../components/pages/shared/ChatRoom.vue'
 
 import AdminLayout from '../components/pages/admin/AdminLayout.vue'
 import DriverRegistrationList from '../components/pages/admin/component/DriverRegistrationList.vue'
@@ -199,6 +200,13 @@ const routes = [
     component: DonateComplete
   },
   {
+    path: '/chat-room/:id',
+    name: 'ChatRoom',
+    component: ChatRoom,
+    props: true,
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/admin',
     component: AdminLayout,
     redirect: '/admin/driver-registration',
@@ -241,7 +249,7 @@ const routes = [
     name: 'RideHistory',
     component: () => import('../components/pages/RideHistory.vue'),
     meta: { requiresAuth: true }
-  }
+  },
 ]
 
 const router = createRouter({

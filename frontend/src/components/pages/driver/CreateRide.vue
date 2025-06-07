@@ -145,7 +145,8 @@
       console.log('Authentication state:', {
         isAuthenticated: userStore.isAuthenticated,
         currentUser: userStore.currentUser,
-        role: userStore.currentUser?.role
+        role: userStore.currentUser?.role,
+        token: userStore.token ? `${userStore.token.substring(0, 15)}...` : 'none'
       });
       
       // Validate inputs
@@ -180,9 +181,23 @@
         
         // Get user ID from user store (with detailed logging)
         console.log('Current user data:', userStore.currentUser);
-        // For drivers, the user_id is what we need for driverID
-        const driverId = userStore.currentUser.id || userStore.currentUser.user_id || userStore.currentUser.driverId;
+        
+        // For drivers, we need to get the user_id
+        // Try multiple possible properties where the ID might be stored
+        const driverId = userStore.currentUser.user_id || 
+                        userStore.currentUser.id || 
+                        userStore.currentUser.driverId;
+                        
         console.log('Using driver ID:', driverId);
+        
+        // Ensure we have a driver ID
+        if (!driverId) {
+          console.error('Driver ID not found in user data:', userStore.currentUser);
+          error.value = 'Could not determine your driver ID. Please try logging out and back in.';
+          loading.value = false;
+          return;
+        }
+        
         const isDriver = userStore.currentUser.role === 'driver';
         
         if (!isDriver) {
@@ -203,14 +218,7 @@
           Passenger_count: seats.value
         };
         
-        // Ensure driverID is set
-        if (!rideData.driverID) {
-          error.value = 'Driver ID not found. Please try logging out and back in.';
-          loading.value = false;
-          return;
-        }
-        
-                // Debug the request payload
+        // Debug the request payload
         console.log('Sending ride data:', rideData);
         
         // Use the rideService for API call
@@ -222,9 +230,21 @@
         router.push('/');
       } catch (err) {
         console.error('Error creating ride:', err);
-        if (err.response && err.response.data && err.response.data.error) {
-          // Extract error message from Axios response
-          error.value = err.response.data.error;
+        
+        // Detailed error logging
+        if (err.response) {
+          console.error('Response error data:', err.response.data);
+          console.error('Response status:', err.response.status);
+          
+          if (err.response.data && err.response.data.error) {
+            // Extract error message from Axios response
+            error.value = err.response.data.error;
+          } else {
+            error.value = `Server error (${err.response.status}). Please try again.`;
+          }
+        } else if (err.request) {
+          console.error('Request was made but no response received');
+          error.value = 'No response from server. Please check your connection.';
         } else {
           error.value = err.message || 'Failed to create ride. Please try again.';
         }

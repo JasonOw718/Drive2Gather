@@ -1,8 +1,9 @@
 from flask import Blueprint, request, jsonify
-from app.services import ride_service, notification_service
+from app.services import ride_service, notification_service, chat_service
 from app.utils.jwt_handler import token_required, role_required
 from app.models import User, db, Ride, Driver
 from datetime import datetime
+import logging
 
 ride_bp = Blueprint('rides', __name__)
 
@@ -252,57 +253,91 @@ def request_ride():
 @role_required(['driver'])
 def create_ride():
     """Create a new ride"""
-    # Get request data
-    data = request.json
-    
-    # Validate required fields
-    required_fields = ['driverID', 'startingLocation', 'dropoffLocation', 'Passenger_count']
-    for field in required_fields:
-        if field not in data:
-            return jsonify({"error": f"Missing required field: {field}"}), 400
-    
-    # Validate location format
-    for location_field in ['startingLocation', 'dropoffLocation']:
-        location = data.get(location_field)
-        if not isinstance(location, str) or not location.strip():
-            return jsonify({"error": f"{location_field} must be a non-empty string"}), 400
-    
-    # Get driver ID from request body
-    driver_id = data['driverID']
-    
-    # Parse requestTime if provided, otherwise use current time
-    request_time = None
-    if 'requestTime' in data and data['requestTime']:
+    try:
+        # Get request data
+        data = request.json
+        
+        # Log the authenticated user
+        user = request.user
+        logging.info(f"Create ride request from user: {user.user_id} ({user.name})")
+        
+        # Validate required fields
+        required_fields = ['driverID', 'startingLocation', 'dropoffLocation', 'Passenger_count']
+        for field in required_fields:
+            if field not in data:
+                logging.warning(f"Missing required field in create_ride: {field}")
+                return jsonify({"error": f"Missing required field: {field}"}), 400
+        
+        # Validate location format
+        for location_field in ['startingLocation', 'dropoffLocation']:
+            location = data.get(location_field)
+            if not isinstance(location, str) or not location.strip():
+                logging.warning(f"Invalid {location_field} format: {location}")
+                return jsonify({"error": f"{location_field} must be a non-empty string"}), 400
+        
+        # Get driver ID from request body
         try:
-            request_time = datetime.fromisoformat(data['requestTime'].replace('Z', '+00:00'))
-        except ValueError:
-            return jsonify({"error": "Invalid requestTime format. Use ISO format (e.g. 2025-05-29T17:00:00)"}), 400
-    
-    # Create ride
-    ride_data, error = ride_service.create_ride(
-        driver_id=driver_id,
-        starting_location=data['startingLocation'],
-        dropoff_location=data['dropoffLocation'],
-        passenger_count=data['Passenger_count'],
-        request_time=request_time
-    )
-    
-    if error:
-        return jsonify({"error": error}), 400
-    
-    # Get driver details for notification
-    driver = User.query.get(driver_id)
-    
-    if driver:
-        # Create notification for the driver about ride publication
-        notification_service.notify_ride_published(
+            driver_id = int(data['driverID'])
+        except (ValueError, TypeError):
+            logging.warning(f"Invalid driverID format: {data['driverID']}")
+            return jsonify({"error": "driverID must be an integer"}), 400
+        
+        # Ensure driver_id matches authenticated user
+        if driver_id != user.user_id:
+            logging.warning(f"Driver ID mismatch: {driver_id} vs authenticated user {user.user_id}")
+            return jsonify({"error": "Driver ID must match authenticated user"}), 403
+        
+        # Parse requestTime if provided, otherwise use current time
+        request_time = None
+        if 'requestTime' in data and data['requestTime']:
+            try:
+                request_time = datetime.fromisoformat(data['requestTime'].replace('Z', '+00:00'))
+            except ValueError:
+                logging.warning(f"Invalid requestTime format: {data['requestTime']}")
+                return jsonify({"error": "Invalid requestTime format. Use ISO format (e.g. 2025-05-29T17:00:00)"}), 400
+        
+        logging.info(f"Creating ride: driver={driver_id}, from={data['startingLocation']}, to={data['dropoffLocation']}")
+        
+        # Create ride
+        ride_data, error = ride_service.create_ride(
             driver_id=driver_id,
-            driver_name=driver.name,
-            from_location=data['startingLocation'],
-            to_location=data['dropoffLocation']
+            starting_location=data['startingLocation'],
+            dropoff_location=data['dropoffLocation'],
+            passenger_count=data['Passenger_count'],
+            request_time=request_time
         )
-    
-    return jsonify(ride_data), 201
+        
+        if error:
+            logging.error(f"Failed to create ride: {error}")
+            return jsonify({"error": error}), 400
+        
+        logging.info(f"Ride created successfully: {ride_data['rideID']}")
+        
+        # Create chat for the ride using chat service
+        chat_data, chat_error = chat_service.create_chat_for_ride(ride_data['rideID'])
+        if chat_error:
+            # Log the error but continue with ride creation
+            logging.warning(f"Failed to create chat for ride {ride_data['rideID']}: {chat_error}")
+        else:
+            logging.info(f"Chat created for ride {ride_data['rideID']}")
+        
+        # Get driver details for notification
+        driver = User.query.get(driver_id)
+        
+        if driver:
+            # Create notification for the driver about ride publication
+            notification_service.notify_ride_published(
+                driver_id=driver_id,
+                driver_name=driver.name,
+                from_location=data['startingLocation'],
+                to_location=data['dropoffLocation']
+            )
+            logging.info(f"Notification sent for ride publication: driver={driver_id}")
+        
+        return jsonify(ride_data), 201
+    except Exception as e:
+        logging.exception(f"Unexpected error in create_ride: {str(e)}")
+        return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
 
 @ride_bp.route('/user-history', methods=['GET'])
 @token_required

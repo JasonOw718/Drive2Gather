@@ -18,12 +18,16 @@ api.interceptors.request.use(
     const token = userStore.token;
     
     if (token) {
+      console.log(`Adding token to request: ${token.substring(0, 15)}...`);
       config.headers['Authorization'] = `Bearer ${token}`;
+    } else {
+      console.log('No token available for request');
     }
     
     return config;
   },
   error => {
+    console.error('Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
@@ -35,16 +39,34 @@ api.interceptors.response.use(
   },
   async error => {
     const originalRequest = error.config;
+    console.log('Response error:', error.response?.status, error.response?.data);
     
     // Handle token refresh or redirect to login if 401
     if (error.response && error.response.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
+      // Check for specific authentication errors that should trigger logout
+      const errorMessage = error.response.data?.error || '';
+      const authErrors = [
+        'Token is missing',
+        'Token has expired',
+        'Invalid token',
+        'User not found'
+      ];
       
-      const userStore = useUserStore();
-      userStore.logout();
-      window.location.href = '/login';
-      
-      return Promise.reject(error);
+      // Only logout for specific authentication errors
+      if (authErrors.some(msg => errorMessage.includes(msg))) {
+        console.log(`Auth error detected: ${errorMessage}. Logging out.`);
+        originalRequest._retry = true;
+        
+        const userStore = useUserStore();
+        userStore.logout();
+        
+        // Use a small delay before redirecting to allow for state updates
+        setTimeout(() => {
+          window.location.href = '/login?reason=session_expired';
+        }, 100);
+      } else {
+        console.log(`Non-auth 401 error: ${errorMessage}. Not logging out.`);
+      }
     }
     
     return Promise.reject(error);
@@ -79,6 +101,8 @@ export const rideService = {
   // Ride search and creation
   searchRides: (params) => api.get('/rides', { params }),
   createRide: (rideData) => {
+    console.log('Creating ride with data:', rideData);
+    
     if (!rideData.driverID) {
       return Promise.reject(new Error('Missing required field: driverID'));
     }
@@ -115,4 +139,21 @@ export const rideService = {
     passengerID: requestData.passengerId
   }),
   cancelRideRequest: (rideId) => api.post(`/rides/${rideId}/cancel`)
+}; 
+
+export const chatService = {
+  // Get chat for a ride
+  getChatByRideId: (rideId) => api.get(`/chats/ride/${rideId}`),
+  
+  // Get messages for a chat
+  getMessages: (chatId) => api.get(`/chats/${chatId}/messages`),
+  
+  // Send a message in a chat
+  sendMessage: (chatId, content) => api.post(`/chats/${chatId}/messages`, { content }),
+  
+  // Get all chats for a user
+  getUserChats: (userId) => api.get(`/chats/user/${userId}/chats`),
+  
+  // Create a new chat for a ride
+  createChat: (rideId) => api.post('/chats', { ride_id: rideId })
 }; 

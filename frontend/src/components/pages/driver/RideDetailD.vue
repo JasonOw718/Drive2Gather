@@ -78,6 +78,20 @@
             </span>
           </div>
         </div>
+        
+        <!-- Chat Room Button -->
+        <div class="mb-6">
+          <div 
+            @click="navigateToChatRoom" 
+            class="flex items-center justify-between py-3 px-4 rounded-xl cursor-pointer bg-gradient-to-r from-[#C77DFF] to-[#B266FF] shadow-sm hover:shadow-md transition-all duration-200"
+          >
+            <div class="flex items-center gap-2">
+              <font-awesome-icon icon="fa-comments" class="text-white text-xl" />
+              <span class="font-medium text-white">Chat Room</span>
+            </div>
+            <font-awesome-icon icon="fa-arrow-right" class="text-white" />
+          </div>
+        </div>
     
         <!-- Passengers Section -->
         <div>
@@ -264,6 +278,14 @@
     }
     
     return statusClassMap[status] || 'bg-gray-100 text-gray-800'
+  }
+  
+  // Navigate to chat room
+  function navigateToChatRoom() {
+    router.push({
+      name: 'ChatRoom',
+      params: { id: rideId.value }
+    })
   }
   </script>
   
