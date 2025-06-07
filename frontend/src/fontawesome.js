@@ -29,8 +29,10 @@ import {
   faCirclePlus,
   faUserPen,
   faPencil,
-  faClock
-
+  faClock,
+  faCheckCircle,
+  faComment,
+  faHistory
 } from '@fortawesome/free-solid-svg-icons'
 
 export function registerIcons() {
@@ -63,7 +65,10 @@ export function registerIcons() {
     faCirclePlus,
     faUserPen,
     faPencil,
-    faClock
+    faClock,
+    faCheckCircle,
+    faComment,
+    faHistory
     // 你可以继续添加更多你未来可能会用到的 icon
   )
 }

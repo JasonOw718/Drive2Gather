@@ -4,11 +4,46 @@
     <header class="flex items-center justify-between px-4 pt-safe-top pb-2 bg-white shadow-sm z-30 relative min-h-[48px]">
       <!-- Centered label absolutely -->
       <span class="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 font-semibold text-lg md:text-xl text-[#5D7285] pointer-events-none select-none w-max" style="font-family: 'Roboto', sans-serif;">Ride2Gather</span>
+      
+      <!-- Notification bell -->
+      <button @click="toggleNotifications" aria-label="Notifications" class="p-2 ml-auto relative">
+        <font-awesome-icon icon="fa-solid fa-bell" class="text-xl text-[#5D7285]" />
+        <span v-if="unreadCount > 0" class="absolute top-0 right-0 bg-[#C77DFF] text-white text-xs rounded-full h-5 w-5 flex items-center justify-center transform translate-x-1 -translate-y-1">{{ unreadCount }}</span>
+      </button>
+      
       <!-- Right-aligned menu icon -->
-      <button @click="openMenu" aria-label="Open menu" class="p-2 ml-auto">
+      <button @click="openMenu" aria-label="Open menu" class="p-2">
         <font-awesome-icon icon="fa-solid fa-bars" class="text-xl text-[#5D7285]" />
       </button>
     </header>
+
+    <!-- Notifications Panel -->
+    <transition name="slide-down">
+      <div v-if="notificationsOpen" class="absolute top-[48px] right-0 w-full max-w-sm bg-white shadow-lg z-30 rounded-b-lg max-h-[400px] overflow-y-auto">
+        <div class="p-4 border-b border-gray-100">
+          <h3 class="font-medium text-[#5D7285]">Notifications</h3>
+        </div>
+        <div v-if="notifications.length === 0" class="p-6 text-center text-gray-500">
+          No notifications
+        </div>
+        <div v-else>
+          <div v-for="(notification, index) in notifications" :key="index" 
+               class="p-4 border-b border-gray-100 hover:bg-gray-50 transition cursor-pointer"
+               :class="{ 'bg-gray-50': !notification.read }">
+            <div class="flex items-start">
+              <div class="flex-shrink-0 mr-3">
+                <div class="w-2 h-2 rounded-full mt-1" :class="notification.read ? 'bg-gray-300' : 'bg-[#C77DFF]'"></div>
+              </div>
+              <div class="flex-1">
+                <p class="text-sm font-medium text-[#303030]">{{ notification.title }}</p>
+                <p class="text-xs text-gray-500 mt-1">{{ notification.message }}</p>
+                <p class="text-xs text-gray-400 mt-1">{{ formatTime(notification.time) }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </transition>
 
     <!-- Overlay Menu -->
     <transition name="slide-right-navbar">
@@ -19,7 +54,7 @@
         <nav class="absolute top-0 right-0 h-full w-64 bg-white shadow-lg flex flex-col py-8 px-6 animate-slide-in" @click.stop>
           <!-- User Avatar -->
           <img
-            :src="userStore.currentUser.avatar"
+            :src="userStore.currentUser?.avatar || '../../../../assets/images/image.png'"
             alt="User Avatar"
             class="w-12 h-12 rounded-full object-cover mb-10 ml-2"
           />
@@ -36,6 +71,9 @@
           <router-link to="/profile" class="mb-6 text-lg font-medium flex items-center gap-2 text-[#5D7285]" @click="closeMenu">
             <font-awesome-icon icon="fa-user-circle" class="text-[#5D7285]" /> Account
           </router-link>
+          <router-link to="/ride-history" class="mb-6 text-lg font-medium flex items-center gap-2 text-[#5D7285]" @click="closeMenu">
+            <font-awesome-icon icon="fa-history" class="text-[#5D7285]" /> Ride History
+          </router-link>
           <button v-if="isAuthenticated" @click="logout" class="mt-auto text-lg font-medium flex items-center gap-2 text-[#5D7285]">
             <font-awesome-icon icon="fa-sign-out-alt" /> Logout
           </button>
@@ -46,7 +84,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../../stores/user'
 
@@ -54,20 +92,88 @@ const menuOpen = ref(false)
 const router = useRouter()
 const userStore = useUserStore()
 
+// Notifications
+const notificationsOpen = ref(false)
+const notifications = ref([
+  {
+    title: 'Ride Request Accepted',
+    message: 'Your ride request has been accepted by the driver.',
+    time: new Date(Date.now() - 30 * 60 * 1000), // 30 minutes ago
+    read: false
+  },
+  {
+    title: 'New Message',
+    message: 'You have a new message from your driver.',
+    time: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+    read: false
+  },
+  {
+    title: 'Ride Completed',
+    message: 'Your ride has been completed. Rate your experience!',
+    time: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
+    read: true
+  }
+])
+
+const unreadCount = computed(() => {
+  return notifications.value.filter(notification => !notification.read).length
+})
+
+function formatTime(date) {
+  const now = new Date()
+  const diffInMs = now - date
+  const diffInMinutes = Math.floor(diffInMs / (1000 * 60))
+  const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60))
+  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24))
+
+  if (diffInMinutes < 60) {
+    return `${diffInMinutes} min ago`
+  } else if (diffInHours < 24) {
+    return `${diffInHours} hr ago`
+  } else {
+    return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`
+  }
+}
+
+function toggleNotifications() {
+  notificationsOpen.value = !notificationsOpen.value
+  if (menuOpen.value && notificationsOpen.value) {
+    menuOpen.value = false
+  }
+}
+
 const userRole = computed(() => userStore.currentUser?.role)
 const isAuthenticated = computed(() => userStore.isAuthenticated)
 
 function openMenu() {
   menuOpen.value = true
+  if (notificationsOpen.value) {
+    notificationsOpen.value = false
+  }
 }
+
 function closeMenu() {
   menuOpen.value = false
 }
+
 function logout() {
   userStore.logout()
   closeMenu()
   router.push('/login-register')
 }
+
+// Close notifications when clicking outside
+onMounted(() => {
+  document.addEventListener('click', (event) => {
+    const target = event.target
+    const isNotificationButton = target.closest('[aria-label="Notifications"]')
+    const isNotificationPanel = target.closest('.slide-down-enter-active') || target.closest('.slide-down-leave-active')
+    
+    if (!isNotificationButton && !isNotificationPanel && notificationsOpen.value) {
+      notificationsOpen.value = false
+    }
+  })
+})
 </script>
 
 <style scoped>
@@ -89,6 +195,17 @@ function logout() {
 .animate-slide-in {
   animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+.slide-down-enter-active,
+.slide-down-leave-active {
+  transition: all 0.3s ease;
+}
+.slide-down-enter-from,
+.slide-down-leave-to {
+  transform: translateY(-20px);
+  opacity: 0;
+}
+
 @keyframes slideInRight {
   from { transform: translateX(100%); }
   to { transform: translateX(0); }

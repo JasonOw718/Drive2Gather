@@ -21,9 +21,15 @@
           />
         </div>
     
-        <!-- When? (Time Picker) -->
+        <!-- When? (Date and Time Picker) -->
         <div class="mb-6">
           <div class="text-base font-semibold text-[#333333] mb-2">When?</div>
+          <input
+            v-model="date"
+            type="date"
+            :min="minDate"
+            class="w-full border border-gray-200 bg-[#F5F5F5] px-4 py-3 mb-3 text-base rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-[#C77DFF] text-left"
+          />
           <input
             v-model="time"
             type="time"
@@ -47,28 +53,76 @@
           </div>
         </div>
     
-        <!-- Search Button -->
+        <!-- Error message -->
+        <div v-if="error" class="mb-4 text-red-500 text-sm">
+          {{ error }}
+        </div>
+    
+        <!-- Submit Button -->
         <button
           class="w-full py-3 px-4 rounded-full shadow-md bg-[#C77DFF] text-white text-base font-bold hover:bg-opacity-90 transition-all duration-300 mb-4"
-          @click="onSearch"
+          @click="publishRide"
+          :disabled="loading"
         >
-          Search
+          <span v-if="loading" class="inline-flex items-center">
+            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+            Publishing...
+          </span>
+          <span v-else>Publish</span>
         </button>
       </div>
     </template>
     
     <script setup>
-    import { ref, computed } from 'vue'
+    import { ref, computed, onMounted } from 'vue'
+    import { useRouter } from 'vue-router';
+    import { useUserStore } from '../../../stores/user';
+    import { rideService } from '../../../services/api';
     import RightNavbar from '../rightnavbar.vue'
+    
+    const router = useRouter();
+    const userStore = useUserStore();
     
     const from = ref('')
     const to = ref('')
+    const date = ref('')
     const time = ref('')
     const seats = ref(1)
+    const loading = ref(false)
+    const error = ref('')
+    
+    // Set default date to today
+    onMounted(() => {
+      const today = new Date();
+      date.value = today.toISOString().split('T')[0];
+      
+      // Make sure auth is initialized
+      userStore.initializeAuth();
+      
+      // Redirect if not a driver
+      if (!userStore.isAuthenticated) {
+        router.push('/login-register');
+        return;
+      }
+      
+      if (userStore.currentUser?.role !== 'driver') {
+        router.push('/home');
+      }
+    });
     
     function pad(n) {
       return n < 10 ? '0' + n : n
     }
+    
+    // Compute min date as today
+    const minDate = computed(() => {
+      const today = new Date();
+      return today.toISOString().split('T')[0];
+    });
+    
     // Compute min time as now, rounded up to next hour
     const minTime = computed(() => {
       const now = new Date()
@@ -81,11 +135,102 @@
     function increment() {
       if (seats.value < 10) seats.value++
     }
+    
     function decrement() {
       if (seats.value > 1) seats.value--
     }
-    function onSearch() {
-      console.log({ from: from.value, to: to.value, time: time.value, seats: seats.value })
+    
+    async function publishRide() {
+      // Debug logs
+      console.log('Authentication state:', {
+        isAuthenticated: userStore.isAuthenticated,
+        currentUser: userStore.currentUser,
+        role: userStore.currentUser?.role
+      });
+      
+      // Validate inputs
+      if (!from.value.trim()) {
+        error.value = 'Please enter a starting location';
+        return;
+      }
+      if (!to.value.trim()) {
+        error.value = 'Please enter a destination';
+        return;
+      }
+      if (!date.value) {
+        error.value = 'Please select a date';
+        return;
+      }
+      if (!time.value) {
+        error.value = 'Please select a time';
+        return;
+      }
+      
+      // Reset error message
+      error.value = '';
+      loading.value = true;
+      
+      try {
+        // Check if user is logged in and is a driver
+        if (!userStore.isAuthenticated || !userStore.currentUser) {
+          error.value = 'You must be logged in to create a ride';
+          loading.value = false;
+          return;
+        }
+        
+        // Get user ID from user store (with detailed logging)
+        console.log('Current user data:', userStore.currentUser);
+        // For drivers, the user_id is what we need for driverID
+        const driverId = userStore.currentUser.id || userStore.currentUser.user_id || userStore.currentUser.driverId;
+        console.log('Using driver ID:', driverId);
+        const isDriver = userStore.currentUser.role === 'driver';
+        
+        if (!isDriver) {
+          error.value = 'You must have a driver account to create a ride';
+          loading.value = false;
+          return;
+        }
+        
+        // Combine date and time to create ISO datetime string
+        const requestTime = `${date.value}T${time.value}:00`;
+        
+        // Prepare request payload
+        const rideData = {
+          driverID: parseInt(driverId),
+          startingLocation: from.value.trim(),
+          dropoffLocation: to.value.trim(),
+          requestTime: requestTime,
+          Passenger_count: seats.value
+        };
+        
+        // Ensure driverID is set
+        if (!rideData.driverID) {
+          error.value = 'Driver ID not found. Please try logging out and back in.';
+          loading.value = false;
+          return;
+        }
+        
+                // Debug the request payload
+        console.log('Sending ride data:', rideData);
+        
+        // Use the rideService for API call
+        const response = await rideService.createRide(rideData);
+        console.log('Response data:', response.data);
+        const result = response.data;
+        
+        // Navigate back to homepage after successful ride creation
+        router.push('/');
+      } catch (err) {
+        console.error('Error creating ride:', err);
+        if (err.response && err.response.data && err.response.data.error) {
+          // Extract error message from Axios response
+          error.value = err.response.data.error;
+        } else {
+          error.value = err.message || 'Failed to create ride. Please try again.';
+        }
+      } finally {
+        loading.value = false;
+      }
     }
     </script>
     

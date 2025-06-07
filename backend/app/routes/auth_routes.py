@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.services import auth_service
 import datetime
+from app.utils.jwt_handler import token_required
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -126,4 +127,19 @@ def signup_driver():
     if error:
         return jsonify({"error": error}), 400
     
-    return jsonify(driver_data), 201 
+    return jsonify(driver_data), 201
+
+@auth_bp.route('/profile', methods=['GET'])
+@token_required
+def get_profile():
+    """Get the current user's profile information"""
+    # Get the user ID from the authenticated user
+    user_id = request.user.user_id
+    
+    # Get user profile
+    user_data, error = auth_service.get_user_profile(user_id)
+    
+    if error:
+        return jsonify({"error": error}), 404
+    
+    return jsonify(user_data), 200 

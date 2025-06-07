@@ -103,103 +103,73 @@ def get_all_rides(page=1, size=20, starting_location=None, dropoff_location=None
         }
     }
 
-def get_driver_ride_requests(driver_id, page=1, size=20):
+def get_driver_ride_requests(driver_id):
     """
     Get all pending ride requests for a specific driver
     
     Args:
         driver_id (int): ID of the driver
-        page (int): Page number (default: 1)
-        size (int): Page size (default: 20)
         
     Returns:
-        dict: Dictionary containing ride requests and pagination info
+        dict: Dictionary containing ride requests
     """
-    # Calculate offset
-    offset = (page - 1) * size
-    
-    # Get the driver's rides
-    driver_rides = Ride.query.filter_by(driver_id=driver_id).all()
-    
-    if not driver_rides:
-        return {
-            "rideRequests": [],
-            "pagination": {
-                "currentPage": page,
-                "pageSize": size,
-                "totalPages": 0,
-                "totalRequests": 0,
-                "nextPage": None,
-                "prevPage": None
-            }
-        }
-    
-    # Get ride IDs
-    ride_ids = [ride.ride_id for ride in driver_rides]
-    
-    # Get total count of pending requests for these rides
-    total = PassengerRide.query.filter(
-        PassengerRide.ride_id.in_(ride_ids),
-        PassengerRide.status == "pending"
-    ).count()
-    
-    # Calculate total pages
-    total_pages = (total + size - 1) // size if total > 0 else 1
-    
-    # Get pending ride requests for these rides
-    requests_query = db.session.query(
-        PassengerRide, 
-        User.name.label('passenger_name'),
-        Ride.starting_location,
-        Ride.dropoff_location,
-        Ride.request_time,
-        Ride.ride_id
-    ).filter(
-        PassengerRide.ride_id.in_(ride_ids),
-        PassengerRide.status == "pending"
-    ).join(Ride, PassengerRide.ride_id == Ride.ride_id)\
-     .join(User, PassengerRide.user_id == User.user_id)\
-     .order_by(desc(Ride.request_time))\
-     .offset(offset)\
-     .limit(size)
-    
-    request_results = requests_query.all()
-    
-    # Format ride requests
-    formatted_requests = []
-    for request_info in request_results:
-        passenger_ride = request_info[0]
-        passenger_name = request_info[1]
-        starting_location = request_info[2]
-        dropoff_location = request_info[3]
-        request_time = request_info[4]
-        ride_id = request_info[5]
+    try:
+        # Get the driver's rides
+        driver_rides = Ride.query.filter_by(driver_id=driver_id).all()
         
-        formatted_requests.append({
-            "rideID": ride_id,
-            "passengerID": passenger_ride.user_id,
-            "passengerName": passenger_name,
-            "startingLocation": starting_location,
-            "dropoffLocation": dropoff_location,
-            "requestTime": format_time_simple(request_time),
-            "status": passenger_ride.status
-        })
-    
-    # Calculate pagination values
-    next_page = page + 1 if page < total_pages else None
-    prev_page = page - 1 if page > 1 else None
-    
-    return {
-        "rideRequests": formatted_requests,
-        "pagination": {
-            "currentPage": page,
-            "pageSize": size,
-            "totalPages": total_pages,
-            "totalRequests": total,
-            "nextPage": next_page,
-            "prevPage": prev_page
+        if not driver_rides:
+            return {
+                "requests": []
+            }
+        
+        # Get ride IDs
+        ride_ids = [ride.ride_id for ride in driver_rides]
+        
+        # Get pending ride requests for these rides
+        requests_query = db.session.query(
+            PassengerRide, 
+            User.name.label('passenger_name'),
+            Ride.starting_location,
+            Ride.dropoff_location,
+            Ride.request_time,
+            Ride.ride_id
+        ).filter(
+            PassengerRide.ride_id.in_(ride_ids),
+            PassengerRide.status == "pending"
+        ).join(Ride, PassengerRide.ride_id == Ride.ride_id)\
+         .join(User, PassengerRide.user_id == User.user_id)\
+         .order_by(desc(Ride.request_time))
+        
+        request_results = requests_query.all()
+        
+        # Format ride requests
+        formatted_requests = []
+        for request_info in request_results:
+            passenger_ride = request_info[0]
+            passenger_name = request_info[1]
+            starting_location = request_info[2]
+            dropoff_location = request_info[3]
+            request_time = request_info[4]
+            ride_id = request_info[5]
+            
+            formatted_requests.append({
+                "rideID": ride_id,
+                "passengerID": passenger_ride.user_id,
+                "passengerName": passenger_name,
+                "startingLocation": starting_location,
+                "dropoffLocation": dropoff_location,
+                "requestTime": format_time_simple(request_time),
+                "status": passenger_ride.status
+            })
+        
+        return {
+            "requests": formatted_requests
         }
-    }
+    except Exception as e:
+        return {
+            "requests": [],
+            "error": str(e)
+        }
 
 def approve_ride_request(ride_id, passenger_id, driver_id):
     """
@@ -350,6 +320,62 @@ def get_driver_passenger_ride(ride_id, passenger_id):
         return ride_request_data, None
     except Exception as e:
         return None, str(e)
+
+def get_passenger_ride_requests(passenger_id):
+    """
+    Get all pending ride requests for a specific passenger
+    
+    Args:
+        passenger_id (int): ID of the passenger
+        
+    Returns:
+        dict: Dictionary containing ride requests
+    """
+    try:
+        # Get all pending ride requests for this passenger
+        requests_query = db.session.query(
+            PassengerRide, 
+            User.name.label('driver_name'),
+            Ride.starting_location,
+            Ride.dropoff_location,
+            Ride.request_time,
+            Ride.ride_id
+        ).filter(
+            PassengerRide.user_id == passenger_id,
+            PassengerRide.status == "pending"
+        ).join(Ride, PassengerRide.ride_id == Ride.ride_id)\
+         .join(User, Ride.driver_id == User.user_id)\
+         .order_by(desc(Ride.request_time))
+        
+        request_results = requests_query.all()
+        
+        # Format ride requests
+        formatted_requests = []
+        for request_info in request_results:
+            passenger_ride = request_info[0]
+            driver_name = request_info[1]
+            starting_location = request_info[2]
+            dropoff_location = request_info[3]
+            request_time = request_info[4]
+            ride_id = request_info[5]
+            
+            formatted_requests.append({
+                "rideID": ride_id,
+                "driverName": driver_name,
+                "startingLocation": starting_location,
+                "dropoffLocation": dropoff_location,
+                "requestTime": format_time_simple(request_time),
+                "status": passenger_ride.status
+            })
+        
+        return {
+            "requests": formatted_requests
+        }
+    except Exception as e:
+        return {
+            "requests": [],
+            "error": str(e)
+        }
 
 def get_ride_request_by_id(passenger_ride_id):
     """
@@ -538,6 +564,236 @@ def create_ride(driver_id, starting_location, dropoff_location, passenger_count,
         }
         
         return ride_data, None
+    except Exception as e:
+        db.session.rollback()
+        return None, str(e)
+
+def get_user_ride_history(user_id, page=1, size=20, role=None):
+    """
+    Get ride history for a specific user (either as passenger or driver)
+    
+    Args:
+        user_id (int): ID of the user
+        page (int): Page number (default: 1)
+        size (int): Page size (default: 20)
+        role (str, optional): Filter by role ('driver' or 'passenger')
+        
+    Returns:
+        dict: Dictionary containing ride history and pagination info
+    """
+    # Calculate offset
+    offset = (page - 1) * size
+    
+    # If no role specified or role is passenger, get passenger rides
+    passenger_rides = []
+    if role is None or role == 'passenger':
+        # Get rides where user is a passenger
+        passenger_query = db.session.query(
+            Ride,
+            PassengerRide.status.label('passenger_status'),
+            User.name.label('driver_name')
+        ).join(
+            PassengerRide, Ride.ride_id == PassengerRide.ride_id
+        ).join(
+            Driver, Ride.driver_id == Driver.user_id
+        ).join(
+            User, Driver.user_id == User.user_id
+        ).filter(
+            PassengerRide.user_id == user_id
+        ).order_by(
+            desc(Ride.request_time)
+        )
+        
+        # Count total passenger rides
+        passenger_total = passenger_query.count()
+        
+        # Get paginated passenger rides
+        if role is None:
+            # If querying both roles, split the page size
+            p_size = size // 2 if role is None else size
+            passenger_results = passenger_query.offset(offset).limit(p_size).all()
+        else:
+            passenger_results = passenger_query.offset(offset).limit(size).all()
+        
+        # Format passenger rides
+        for result in passenger_results:
+            ride = result[0]
+            passenger_status = result[1]
+            driver_name = result[2] or "Unknown Driver"
+            
+            passenger_rides.append({
+                "rideID": ride.ride_id,
+                "driverID": ride.driver_id,
+                "driverName": driver_name,
+                "startingLocation": ride.starting_location,
+                "dropoffLocation": ride.dropoff_location,
+                "requestTime": ride.request_time.isoformat(),
+                "status": passenger_status,  # Use passenger-specific status
+                "rideType": "passenger",
+                "passengerCount": ride.passenger_count
+            })
+    
+    # If no role specified or role is driver, get driver rides
+    driver_rides = []
+    driver_total = 0
+    if role is None or role == 'driver':
+        # Get rides where user is the driver
+        driver_query = db.session.query(
+            Ride
+        ).join(
+            Driver, Ride.driver_id == Driver.user_id
+        ).filter(
+            Driver.user_id == user_id
+        ).order_by(
+            desc(Ride.request_time)
+        )
+        
+        # Count total driver rides
+        driver_total = driver_query.count()
+        
+        # Get paginated driver rides
+        if role is None:
+            # If querying both roles, split the page size and adjust offset
+            d_size = size // 2 if role is None else size
+            # If there are more passenger rides than the half page size, adjust driver offset
+            d_offset = max(0, offset - max(0, passenger_total - p_size)) if role is None else offset
+            driver_results = driver_query.offset(d_offset).limit(d_size).all()
+        else:
+            driver_results = driver_query.offset(offset).limit(size).all()
+        
+        # Format driver rides
+        for ride in driver_results:
+            driver_rides.append({
+                "rideID": ride.ride_id,
+                "driverID": ride.driver_id,
+                "startingLocation": ride.starting_location,
+                "dropoffLocation": ride.dropoff_location,
+                "requestTime": ride.request_time.isoformat(),
+                "status": ride.status,
+                "rideType": "driver",
+                "passengerCount": ride.passenger_count
+            })
+    
+    # Combine and sort rides by request time
+    all_rides = passenger_rides + driver_rides
+    all_rides.sort(key=lambda x: x["requestTime"], reverse=True)
+    
+    # Calculate total across both types
+    total = passenger_total + driver_total if role is None else (passenger_total if role == 'passenger' else driver_total)
+    
+    # Calculate total pages
+    total_pages = (total + size - 1) // size if total > 0 else 1
+    
+    # Calculate pagination values
+    next_page = page + 1 if page < total_pages else None
+    prev_page = page - 1 if page > 1 else None
+    
+    return {
+        "rides": all_rides[:size],  # Limit to page size after sorting
+        "pagination": {
+            "currentPage": page,
+            "pageSize": size,
+            "totalPages": total_pages,
+            "totalRides": total,
+            "nextPage": next_page,
+            "prevPage": prev_page
+        }
+    }
+
+def get_ride_details_with_passengers(ride_id):
+    """
+    Get detailed information about a ride including all passenger details
+    
+    Args:
+        ride_id (int): ID of the ride to retrieve
+        
+    Returns:
+        dict: Dictionary containing ride details and passenger information
+    """
+    # Get the ride details
+    ride = Ride.query.get(ride_id)
+    if not ride:
+        return None
+    
+    # Get driver details
+    driver_info = None
+    if ride.driver_id:
+        driver = User.query.join(Driver, User.user_id == Driver.user_id).filter(Driver.user_id == ride.driver_id).first()
+        if driver:
+            driver_info = {
+                "driverID": driver.user_id,
+                "name": driver.name,
+                "email": driver.email,
+                "phone": driver.phone
+            }
+    
+    # Get all passenger rides for this ride
+    passenger_rides = PassengerRide.query.filter_by(ride_id=ride_id).all()
+    
+    # Get passenger details for each passenger ride
+    passengers = []
+    for passenger_ride in passenger_rides:
+        # Only include passengers with 'approved' status
+        if passenger_ride.status != 'approved':
+            continue
+            
+        passenger = User.query.get(passenger_ride.user_id)
+        if passenger:
+            # Create a unique identifier for this passenger ride 
+            # using the composite key (user_id and ride_id)
+            passenger_ride_id = f"{passenger_ride.user_id}_{passenger_ride.ride_id}"
+            
+            passengers.append({
+                "passengerID": passenger.user_id,
+                "name": passenger.name,
+                "email": passenger.email,
+                "phone": passenger.phone,
+                "status": passenger_ride.status,
+                "passengerRideID": passenger_ride_id
+            })
+    
+    # Format ride details with passengers
+    ride_details = {
+        "rideID": ride.ride_id,
+        "driverID": ride.driver_id,
+        "startingLocation": ride.starting_location,
+        "dropoffLocation": ride.dropoff_location,
+        "requestTime": ride.request_time.isoformat(),
+        "status": ride.status,
+        "passengerCount": ride.passenger_count,
+        "driver": driver_info,
+        "passengers": passengers
+    }
+    
+    return ride_details
+
+def reject_ride_request(ride_id, passenger_id):
+    """
+    Reject a ride request
+    
+    Args:
+        ride_id (int): ID of the ride
+        passenger_id (int): ID of the passenger
+        
+    Returns:
+        tuple: (result, error)
+    """
+    try:
+        # Get the passenger ride
+        passenger_ride = PassengerRide.query.filter_by(
+            ride_id=ride_id, 
+            user_id=passenger_id,
+            status='pending'
+        ).first()
+        
+        if not passenger_ride:
+            return None, "Ride request not found or already processed"
+        
+        # Update the passenger ride status
+        passenger_ride.status = 'rejected'
+        db.session.commit()
+        
+        return passenger_ride, None
     except Exception as e:
         db.session.rollback()
         return None, str(e) 

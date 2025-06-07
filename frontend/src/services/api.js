@@ -1,99 +1,107 @@
 import axios from 'axios';
+import { useUserStore } from '@/stores/user';
 
-// Create axios instance with default config
-const apiClient = axios.create({
-  baseURL: 'http://localhost:5000/api',
+// Create axios instance with base URL
+const api = axios.create({
+  baseURL: 'http://127.0.0.1:5000/api',
+  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
-  },
-  timeout: 10000
+    'Accept': 'application/json'
+  }
 });
 
-// Request interceptor to add auth token to requests
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
+// Request interceptor for API calls
+api.interceptors.request.use(
+  config => {
+    const userStore = useUserStore();
+    const token = userStore.token;
+    
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
+    
     return config;
   },
-  (error) => {
+  error => {
     return Promise.reject(error);
   }
 );
 
-// Authentication services
+// Response interceptor for API calls
+api.interceptors.response.use(
+  response => {
+    return response;
+  },
+  async error => {
+    const originalRequest = error.config;
+    
+    // Handle token refresh or redirect to login if 401
+    if (error.response && error.response.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      const userStore = useUserStore();
+      userStore.logout();
+      window.location.href = '/login';
+      
+      return Promise.reject(error);
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
+export default api;
+
+// Custom services built on top of the api instance
 export const authService = {
-  // Login user
-  login(credentials) {
-    return apiClient.post('/auth/login', credentials);
-  },
-  
-  // Register passenger
-  registerPassenger(userData) {
-    return apiClient.post('/auth/users', userData);
-  },
-  
-  // Register driver
-  registerDriver(driverData) {
-    return apiClient.post('/auth/drivers', driverData);
-  },
-  
-  // Change password
-  changePassword(passwordData) {
-    return apiClient.post('/auth/change-password', passwordData);
-  },
-  
-  // Forgot password
-  forgotPassword(emailData) {
-    return apiClient.post('/auth/forgot-password', emailData);
-  }
+  login: (credentials) => api.post('/auth/login', credentials),
+  getUsers: () => api.get('/auth/users'),
+  getDrivers: () => api.get('/auth/drivers'),
+  registerPassenger: (userData) => api.post('/auth/users', userData),
+  registerDriver: (userData) => api.post('/auth/drivers', userData),
+  getUserProfile: () => api.get('/auth/profile'),
+  updateUserProfile: (userData) => api.put('/auth/profile', userData)
 };
 
-// Ride services
 export const rideService = {
-  // Get all rides with filtering
-  getAllRides(options = {}) {
-    const { 
-      page = 1, 
-      size = 20, 
-      starting_location = '', 
-      dropoff_location = '', 
-      request_time = '', 
-      seats = '' 
-    } = options;
+  // Ride search and creation
+  searchRides: (params) => api.get('/rides', { params }),
+  createRide: (rideData) => {
+    if (!rideData.driverID) {
+      return Promise.reject(new Error('Missing required field: driverID'));
+    }
     
-    // Build query parameters
-    const params = new URLSearchParams();
-    params.append('page', page);
-    params.append('size', size);
-    
-    if (starting_location) params.append('starting_location', starting_location);
-    if (dropoff_location) params.append('dropoff_location', dropoff_location);
-    if (request_time) params.append('request_time', request_time);
-    if (seats) params.append('seats', seats);
-    
-    return apiClient.get(`/rides?${params.toString()}`);
+    return api.post('/rides', {
+      driverID: parseInt(rideData.driverID),
+      startingLocation: rideData.startingLocation,
+      dropoffLocation: rideData.dropoffLocation,
+      requestTime: rideData.requestTime,
+      Passenger_count: parseInt(rideData.Passenger_count || 1)
+    });
   },
   
-  // Get ride by ID
-  getRideById(rideId) {
-    return apiClient.get(`/rides/${rideId}`);
-  },
+  // Ride history and details
+  getUserRideHistory: (params) => api.get('/rides/user-history', { params }),
+  getRideDetails: (rideId) => api.get(`/rides/${rideId}`),
+  getRideById: (rideId) => api.get(`/rides/${rideId}`),
+  getRideDetailsWithPassengers: (rideId) => api.get(`/rides/${rideId}/details`),
   
-  // Create new ride
-  createRide(rideData) {
-    return apiClient.post('/rides', rideData);
-  },
-  
-  // Request a ride
-  requestRide(rideId, passengerData) {
-    return apiClient.post(`/rides/${rideId}/request`, passengerData);
-  }
-};
-
-export default {
-  auth: authService,
-  rides: rideService
+  // Ride requests
+  requestRide: (rideId, passengerData) => api.post(`/rides/requests`, { 
+    rideID: rideId,
+    passengerID: passengerData.passengerID || 1,
+    seatCount: passengerData.seats || 1
+  }),
+  getDriverRideRequests: (driverId) => api.get(`/rides/driver/${driverId}/requests`),
+  getPassengerRideRequests: (passengerId) => api.get(`/rides/passenger/${passengerId}/requests`),
+  approveRideRequest: (requestData) => api.post('/rides/requests/approve', {
+    rideID: requestData.rideId,
+    passengerID: requestData.passengerId
+  }),
+  rejectRideRequest: (requestData) => api.post('/rides/requests/reject', {
+    rideID: requestData.rideId,
+    passengerID: requestData.passengerId
+  }),
+  cancelRideRequest: (rideId) => api.post(`/rides/${rideId}/cancel`)
 }; 

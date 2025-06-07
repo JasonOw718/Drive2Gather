@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.services import ride_service
 from app.utils.jwt_handler import token_required, role_required
-from app.models import User, db
+from app.models import User, db, Ride, Driver
 from datetime import datetime
 
 ride_bp = Blueprint('rides', __name__)
@@ -39,15 +39,38 @@ def get_rides():
     return jsonify(rides_data), 200
 
 @ride_bp.route('/<int:ride_id>', methods=['GET'])
-def get_ride_details(ride_id):
-    """Get details of a specific ride by ID"""
-    # Get ride details
-    ride_data, error = ride_service.get_ride_by_id(ride_id)
-    
-    if error:
-        return jsonify({"error": error}), 404
-    
-    return jsonify(ride_data), 200
+@token_required
+def get_ride_by_id(ride_id):
+    """Get a specific ride by ID"""
+    try:
+        # Query the ride
+        ride = Ride.query.get(ride_id)
+        
+        # Check if ride exists
+        if not ride:
+            return jsonify({"error": f"Ride with ID {ride_id} not found"}), 404
+        
+        # Get driver info
+        driver = User.query.join(Driver).filter(Driver.user_id == ride.driver_id).first()
+        driver_name = driver.name if driver else "Unknown"
+        
+        # Format the response
+        ride_data = {
+            "rideID": ride.ride_id,
+            "driverID": ride.driver_id,
+            "driverName": driver_name,
+            "startingLocation": ride.starting_location,
+            "dropoffLocation": ride.dropoff_location,
+            "requestTime": ride.request_time.isoformat(),
+            "Passenger_count": ride.passenger_count,
+            "seatsOccupied": ride.seats_occupied if hasattr(ride, 'seats_occupied') else 0,
+            "fare": float(ride.fare) if hasattr(ride, 'fare') else 0.0,
+            "status": ride.status
+        }
+        
+        return jsonify(ride_data), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @ride_bp.route('/<int:ride_id>/passenger/<int:passenger_id>', methods=['GET'])
 @role_required(['driver'])
@@ -77,35 +100,57 @@ def approve_ride_request():
         if field not in data:
             return jsonify({"error": f"Missing required field: {field}"}), 400
     
+    ride_id = data['rideID']
+    passenger_id = data['passengerID']
+    
     # Approve the ride request
-    approval_data, error = ride_service.approve_ride_request(
-        ride_id=data['rideID'],
-        passenger_id=data['passengerID'],
+    result, error = ride_service.approve_ride_request(
+        ride_id=ride_id,
+        passenger_id=passenger_id,
         driver_id=driver_id
     )
     
     if error:
         return jsonify({"error": error}), 400
     
-    return jsonify(approval_data), 200
+    return jsonify({"message": "Ride request approved successfully"}), 200
+
+@ride_bp.route('/requests/reject', methods=['POST'])
+@role_required(['driver'])
+def reject_ride_request():
+    """Reject a passenger's ride request"""
+    # Get the driver ID from the authenticated user
+    driver_id = request.user.user_id
+    
+    # Get request data
+    data = request.json
+    
+    # Validate required fields
+    required_fields = ['rideID', 'passengerID']
+    for field in required_fields:
+        if field not in data:
+            return jsonify({"error": f"Missing required field: {field}"}), 400
+    
+    ride_id = data['rideID']
+    passenger_id = data['passengerID']
+    
+    # Reject the ride request
+    result, error = ride_service.reject_ride_request(
+        ride_id=ride_id,
+        passenger_id=passenger_id
+    )
+    
+    if error:
+        return jsonify({"error": error}), 400
+    
+    return jsonify({"message": "Ride request rejected successfully"}), 200
 
 @ride_bp.route('/driver/<int:driver_id>/requests', methods=['GET'])
 @role_required(['driver'])
 def get_driver_ride_requests(driver_id):
     """Get all pending ride requests for a specific driver"""
-    # Get pagination parameters
-    try:
-        page = int(request.args.get('page', 1))
-        size = int(request.args.get('size', 20))
-    except ValueError:
-        return jsonify({"error": "Invalid pagination parameters"}), 400
-    
-    # Validate pagination parameters
-    if page < 1 or size < 1:
-        return jsonify({"error": "Page and size must be positive integers"}), 400
-    
     # Get ride requests
-    requests_data = ride_service.get_driver_ride_requests(driver_id, page, size)
+    requests_data = ride_service.get_driver_ride_requests(driver_id)
     
     return jsonify(requests_data), 200
 
@@ -193,4 +238,71 @@ def create_ride():
     if error:
         return jsonify({"error": error}), 400
     
-    return jsonify(ride_data), 201 
+    return jsonify(ride_data), 201
+
+@ride_bp.route('/user-history', methods=['GET'])
+@token_required
+def get_user_ride_history():
+    """Get ride history for the authenticated user"""
+    # Get the user ID from the authenticated user
+    user_id = request.user.user_id
+    
+    # Get query parameters
+    try:
+        page = int(request.args.get('page', 1))
+        size = int(request.args.get('size', 20))
+    except ValueError:
+        return jsonify({"error": "Invalid pagination parameters"}), 400
+    
+    # Validate pagination parameters
+    if page < 1 or size < 1:
+        return jsonify({"error": "Page and size must be positive integers"}), 400
+    
+    # Get role filter if provided
+    role = request.args.get('role', None)
+    if role not in [None, 'driver', 'passenger']:
+        return jsonify({"error": "Role must be either 'driver' or 'passenger'"}), 400
+    
+    # Get user ride history
+    history_data = ride_service.get_user_ride_history(
+        user_id=user_id,
+        page=page,
+        size=size,
+        role=role
+    )
+    
+    return jsonify(history_data), 200
+
+@ride_bp.route('/<int:ride_id>/details', methods=['GET'])
+@token_required
+def get_ride_details_with_passengers(ride_id):
+    """Get detailed ride information including all passengers"""
+    # Get the user ID from the authenticated user
+    user_id = request.user.user_id
+    
+    # Get detailed ride information
+    ride_details = ride_service.get_ride_details_with_passengers(ride_id)
+    
+    if not ride_details:
+        return jsonify({"error": "Ride not found"}), 404
+    
+    # Check if user is authorized to view details
+    # Allow if user is the driver or one of the passengers
+    is_driver = ride_details["driverID"] == user_id
+    is_passenger = any(p["passengerID"] == user_id for p in ride_details["passengers"])
+    
+    if not (is_driver or is_passenger):
+        return jsonify({"error": "You are not authorized to view this ride's details"}), 403
+    
+    return jsonify(ride_details), 200
+
+@ride_bp.route('/passenger/<int:passenger_id>/requests', methods=['GET'])
+@role_required(['passenger'])
+def get_passenger_ride_requests(passenger_id):
+    """Get all pending ride requests for a specific passenger"""
+    # Get ride requests
+    requests_data = ride_service.get_passenger_ride_requests(passenger_id)
+    
+    return jsonify(requests_data), 200
+
+ 

@@ -259,4 +259,48 @@ def get_role_code(role_name):
         "driver": 2,
         "admin": 3
     }
-    return role_codes.get(role_name, 0) 
+    return role_codes.get(role_name, 0)
+
+def get_user_profile(user_id):
+    """
+    Get user profile information
+    
+    Args:
+        user_id (int): ID of the user
+        
+    Returns:
+        tuple: (user_data, error)
+    """
+    try:
+        # Get the user
+        user = User.query.get(user_id)
+        if not user:
+            return None, f"User with ID {user_id} not found"
+        
+        # Get user role
+        user_role = UserRole.query.filter_by(user_id=user_id).first()
+        role_name = user_role.role_name if user_role else "passenger"
+        
+        # Basic user data
+        user_data = {
+            "user_id": user.user_id,
+            "name": user.name,
+            "email": user.email,
+            "phone": user.phone,
+            "role": role_name
+        }
+        
+        # Add role-specific data
+        if role_name == "driver":
+            driver = Driver.query.filter_by(user_id=user_id).first()
+            if driver:
+                user_data.update({
+                    "license_number": driver.license_number,
+                    "car_number": driver.car_number,
+                    "car_type": driver.car_type,
+                    "car_color": driver.car_color
+                })
+        
+        return user_data, None
+    except Exception as e:
+        return None, str(e) 

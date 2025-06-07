@@ -114,13 +114,11 @@ async function loadRides() {
     // Format date and time for API request
     const requestTime = `${date.value}T${time.value}:00`;
     
-    const response = await rideService.getAllRides({
+    const response = await rideService.searchRides({
       starting_location: from.value,
       dropoff_location: to.value,
       request_time: requestTime,
-      seats: seats.value.toString(),
-      page: 1,
-      size: 50
+      seats: seats.value.toString()
     });
     
     rides.value = response.data.rides.map(ride => ({
@@ -129,13 +127,13 @@ async function loadRides() {
       from: ride.startingLocation,
       to: ride.dropoffLocation,
       driverName: ride.driverName,
-      driverAvatar: '/src/assets/images/avatar.png', // Default avatar
+      driverAvatar: '../../../../assets/images/image.png', // Default avatar
       seatAvailable: ride.Passenger_count,
       seatFilled: 0, // This would need to be calculated from passengers if available
       driverPhone: '123-456-7890', // This would come from the driver details
       driverCarType: 'Sedan', // This would come from the driver details
       carPlate: 'ABC123', // This would come from the driver details
-      carPhoto: '/src/assets/images/car.png', // Default car image
+      carPhoto: '../../../../assets/images/carphoto.jpg', // Default car image
       driverID: ride.driverID,
       status: ride.status,
       requestTime: ride.requestTime
@@ -168,21 +166,8 @@ const filteredRides = computed(() => {
 function selectRide(ride) {
   router.push({
     name: 'RideDetail',
-    query: {
-      id: ride.id,
-      departureTime: ride.departureTime,
-      from: ride.from,
-      to: ride.to,
-      driverName: ride.driverName,
-      driverPhone: ride.driverPhone,
-      driverCarType: ride.driverCarType,
-      carPlate: ride.carPlate,
-      seatAvailable: ride.seatAvailable,
-      seatFilled: ride.seatFilled,
-      driverAvatar: ride.driverAvatar,
-      carPhoto: ride.carPhoto,
-      driverID: ride.driverID,
-      requestTime: ride.requestTime
+    params: {
+      id: ride.id
     }
   })
 }

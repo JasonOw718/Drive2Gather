@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-// import HomeView from '../views/HomeView.vue'
+import HomePage from '../components/pages/HomePage.vue'
 import LoginRegister from '../components/pages/passanger/LoginRegister.vue'
 import Login from '../components/pages/passanger/Login.vue'
 import ForgotPassword from '../components/pages/passanger/ForgotPassword.vue'
@@ -39,19 +39,8 @@ const routes = [
   {
     path: '/',
     name: 'Home',
-    beforeEnter: (to, from, next) => {
-      const userStore = useUserStore()
-      if (!userStore.isAuthenticated) {
-        next({ name: 'LoginRegister' })
-      } else {
-        const role = userStore.currentUser?.role
-        if (role === 'driver') {
-          next({ name: 'CreateRide' })
-        } else {
-          next({ name: 'FindRide' })
-        }
-      }
-    }
+    component: HomePage,
+    meta: { requiresAuth: true }
   },
   {
     path: '/find-ride',
@@ -130,14 +119,38 @@ const routes = [
     component: RideList
   },
   {
-    path: '/ride-detail',
+    path: '/ride/:id',
+    name: 'RideDetailView',
+    beforeEnter: (to, from, next) => {
+      const userStore = useUserStore()
+      const role = userStore.currentUser?.role
+      
+      if (role === 'driver') {
+        next({ 
+          name: 'RideDetailDSide', 
+          query: { id: to.params.id } 
+        })
+      } else {
+        next({ 
+          name: 'RideDetail', 
+          params: { id: to.params.id } 
+        })
+      }
+    }
+  },
+  {
+    path: '/ride-detail/:id',
     name: 'RideDetail',
-    component: RideDetail
+    component: RideDetail,
+    props: true
   },
   {
     path: '/ride-detail-driverside',
     name: 'RideDetailDSide',
-    component: RideDetailD
+    component: RideDetailD,
+    props: route => ({ 
+      id: route.query.id 
+    })
   },
   {
     path: '/ridebooked',
@@ -216,6 +229,17 @@ const routes = [
       },
       
     ]
+  },
+  {
+    path: '/home',
+    redirect: '/',
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/ride-history',
+    name: 'RideHistory',
+    component: () => import('../components/pages/RideHistory.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 
@@ -228,10 +252,16 @@ router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
   const isAuthenticated = userStore.isAuthenticated
   
+  // Check if route requires authentication
+  if (to.meta.requiresAuth && !isAuthenticated) {
+    next({ name: 'LoginRegister' })
+    return
+  }
+  
   // These routes don't require authentication
   const publicRoutes = ['Login', 'LoginRegister', 'RegisterP', 'RegisterD', 'ForgotPassword']
   
-  if (!isAuthenticated && !publicRoutes.includes(to.name)) {
+  if (!isAuthenticated && !publicRoutes.includes(to.name) && !to.meta.requiresAuth) {
     // Redirect to login if trying to access a protected route while not authenticated
     next({ name: 'LoginRegister' })
   } else {
