@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from app.services import ride_service
+from app.services import ride_service, notification_service
 from app.utils.jwt_handler import token_required, role_required
 from app.models import User, db, Ride, Driver
 from datetime import datetime
@@ -113,6 +113,21 @@ def approve_ride_request():
     if error:
         return jsonify({"error": error}), 400
     
+    # Get ride and user details for notification
+    ride = Ride.query.get(ride_id)
+    driver = User.query.get(driver_id)
+    
+    if ride and driver:
+        # Create notification for the passenger
+        notification_service.notify_ride_request_approved(
+            ride_id=ride_id,
+            driver_id=driver_id,
+            driver_name=driver.name,
+            passenger_id=passenger_id,
+            from_location=ride.starting_location,
+            to_location=ride.dropoff_location
+        )
+    
     return jsonify({"message": "Ride request approved successfully"}), 200
 
 @ride_bp.route('/requests/reject', methods=['POST'])
@@ -142,6 +157,21 @@ def reject_ride_request():
     
     if error:
         return jsonify({"error": error}), 400
+    
+    # Get ride and user details for notification
+    ride = Ride.query.get(ride_id)
+    driver = User.query.get(driver_id)
+    
+    if ride and driver:
+        # Create notification for the passenger
+        notification_service.notify_ride_request_rejected(
+            ride_id=ride_id,
+            driver_id=driver_id,
+            driver_name=driver.name,
+            passenger_id=passenger_id,
+            from_location=ride.starting_location,
+            to_location=ride.dropoff_location
+        )
     
     return jsonify({"message": "Ride request rejected successfully"}), 200
 
@@ -194,6 +224,28 @@ def request_ride():
     if error:
         return jsonify({"error": error}), 400
     
+    # Get ride details for notification
+    ride = Ride.query.get(data['rideID'])
+    passenger = User.query.get(data['passengerID'])
+    
+    if ride and passenger:
+        # Create notification for the driver
+        notification_service.notify_ride_request(
+            ride_id=data['rideID'],
+            driver_id=ride.driver_id,
+            passenger_id=data['passengerID'],
+            passenger_name=passenger.name,
+            from_location=ride.starting_location,
+            to_location=ride.dropoff_location
+        )
+        
+        # Create notification for the passenger
+        notification_service.notify_ride_request_submitted(
+            passenger_id=data['passengerID'],
+            from_location=ride.starting_location,
+            to_location=ride.dropoff_location
+        )
+    
     return jsonify(request_data), 201
 
 @ride_bp.route('', methods=['POST'])
@@ -237,6 +289,18 @@ def create_ride():
     
     if error:
         return jsonify({"error": error}), 400
+    
+    # Get driver details for notification
+    driver = User.query.get(driver_id)
+    
+    if driver:
+        # Create notification for the driver about ride publication
+        notification_service.notify_ride_published(
+            driver_id=driver_id,
+            driver_name=driver.name,
+            from_location=data['startingLocation'],
+            to_location=data['dropoffLocation']
+        )
     
     return jsonify(ride_data), 201
 
@@ -304,5 +368,45 @@ def get_passenger_ride_requests(passenger_id):
     requests_data = ride_service.get_passenger_ride_requests(passenger_id)
     
     return jsonify(requests_data), 200
+
+@ride_bp.route('/<int:ride_id>/cancel', methods=['POST'])
+@role_required(['passenger'])
+def cancel_ride_request(ride_id):
+    """Cancel a passenger's ride request"""
+    # Get the passenger ID from the authenticated user
+    passenger_id = request.user.user_id
+    
+    # Cancel the ride request
+    result, error = ride_service.cancel_ride_request(
+        ride_id=ride_id,
+        passenger_id=passenger_id
+    )
+    
+    if error:
+        return jsonify({"error": error}), 400
+    
+    # Get ride and user details for notification
+    ride = Ride.query.get(ride_id)
+    passenger = User.query.get(passenger_id)
+    
+    if ride and passenger:
+        # Create notification for the driver
+        notification_service.notify_ride_request_cancelled(
+            ride_id=ride_id,
+            driver_id=ride.driver_id,
+            passenger_id=passenger_id,
+            passenger_name=passenger.name,
+            from_location=ride.starting_location,
+            to_location=ride.dropoff_location
+        )
+        
+        # Create notification for the passenger
+        notification_service.notify_ride_request_cancelled_passenger(
+            passenger_id=passenger_id,
+            from_location=ride.starting_location,
+            to_location=ride.dropoff_location
+        )
+    
+    return jsonify({"message": "Ride request cancelled successfully"}), 200
 
  

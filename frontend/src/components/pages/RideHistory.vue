@@ -431,7 +431,10 @@ const getStatusClass = (status) => {
 
 // View ride details
 const viewRideDetails = (ride) => {
-  router.push(`/ride/${ride.rideID || ride.id}`);
+  router.push({
+    path: `/ride/${ride.rideID || ride.id}`,
+    query: { from_history: 'true' }
+  });
 };
 
 // Load data on component mount

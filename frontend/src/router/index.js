@@ -133,7 +133,8 @@ const routes = [
       } else {
         next({ 
           name: 'RideDetail', 
-          params: { id: to.params.id } 
+          params: { id: to.params.id },
+          query: to.query // Pass through the query parameters
         })
       }
     }

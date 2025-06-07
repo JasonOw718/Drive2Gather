@@ -64,6 +64,17 @@ export const authService = {
   updateUserProfile: (userData) => api.put('/auth/profile', userData)
 };
 
+export const notificationService = {
+  // Get notifications for the current user
+  getNotifications: (params) => api.get('/notifications', { params }),
+  
+  // Mark a notification as read
+  markAsRead: (notificationId) => api.put(`/notifications/read/${notificationId}`),
+  
+  // Mark all notifications as read
+  markAllAsRead: () => api.put('/notifications/read-all')
+};
+
 export const rideService = {
   // Ride search and creation
   searchRides: (params) => api.get('/rides', { params }),

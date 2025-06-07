@@ -796,4 +796,35 @@ def reject_ride_request(ride_id, passenger_id):
         return passenger_ride, None
     except Exception as e:
         db.session.rollback()
+        return None, str(e)
+
+def cancel_ride_request(ride_id, passenger_id):
+    """
+    Cancel a passenger's ride request
+    
+    Args:
+        ride_id (int): ID of the ride
+        passenger_id (int): ID of the passenger
+        
+    Returns:
+        tuple: (result, error)
+    """
+    try:
+        # Get the passenger ride
+        passenger_ride = PassengerRide.query.filter_by(
+            ride_id=ride_id, 
+            user_id=passenger_id,
+            status='pending'
+        ).first()
+        
+        if not passenger_ride:
+            return None, "Ride request not found or already processed"
+        
+        # Update the passenger ride status to cancelled
+        passenger_ride.status = 'cancelled'
+        db.session.commit()
+        
+        return passenger_ride, None
+    except Exception as e:
+        db.session.rollback()
         return None, str(e) 

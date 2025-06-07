@@ -86,8 +86,15 @@
       <!-- Spacer -->
       <div class="flex-1"></div>
 
-      <!-- Action Button -->
+      <!-- 
+        Action Button - Only show if not viewing from history
+        Debug info:
+        - fromHistory: {{ fromHistory }}
+        - route.query.from_history: {{ route.query.from_history }}
+        - forceHideButton: {{ forceHideButton }}
+      -->
       <button 
+        v-if="false"
         class="w-full py-3 px-4 rounded-full shadow-md bg-[#C77DFF] text-white text-base font-bold hover:bg-opacity-90 transition-all duration-300 mb-0" 
         style="max-width: 100%;"
         @click="requestRide"
@@ -111,6 +118,14 @@ const passengerInputStore = usePassengerInputStore()
 
 // Get ride ID from route params
 const rideId = route.params.id
+
+// Force hide button regardless of route - set to true to always hide
+const forceHideButton = true
+
+// Check if we're coming from ride history
+const fromHistory = computed(() => {
+  return route.query.from_history === 'true' || forceHideButton
+})
 
 // Reactive state
 const ride = ref({})
@@ -229,6 +244,9 @@ async function requestRide() {
 }
 
 onMounted(() => {
+  console.log('Route query params:', route.query);
+  console.log('from_history param:', route.query.from_history);
+  console.log('fromHistory computed value:', fromHistory.value);
   loadRideDetail()
 })
 </script>

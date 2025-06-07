@@ -25,9 +25,12 @@ with app.app_context():
 # Register blueprints
 from app.routes.auth_routes import auth_bp
 from app.routes.ride_routes import ride_bp
+from app.routes.notification_routes import notification_bp
 
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(ride_bp, url_prefix='/api/rides')
+app.register_blueprint(notification_bp, url_prefix='/api/notifications')
+
 
 # Sample route to test the application
 @app.route('/')
