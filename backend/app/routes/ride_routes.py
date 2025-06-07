@@ -1,9 +1,10 @@
 from flask import Blueprint, request, jsonify
 from app.services import ride_service, notification_service, chat_service
 from app.utils.jwt_handler import token_required, role_required
-from app.models import User, db, Ride, Driver
+from app.models import User, db, Ride, Driver, PassengerRide, Passenger
 from datetime import datetime
 import logging
+from app.utils.filter_strategies import get_filter_context_instance, FILTER_STRATEGY_MAP
 
 ride_bp = Blueprint('rides', __name__)
 
@@ -55,6 +56,24 @@ def get_ride_by_id(ride_id):
         driver = User.query.join(Driver).filter(Driver.user_id == ride.driver_id).first()
         driver_name = driver.name if driver else "Unknown"
         
+        # Get the current user's ID
+        user_id = request.user.user_id
+
+        # Default status is the ride's status
+        status = ride.status
+        # Check if the user is a passenger by querying the Passenger table
+        is_passenger = Passenger.query.filter_by(user_id=user_id).first() is not None
+        # If the user is a passenger, get their specific status for this ride
+        print("--------------------------------")
+        print(ride_id)
+        if is_passenger:
+            passenger_ride = PassengerRide.query.filter_by(
+                ride_id=ride_id,
+                user_id=user_id
+            ).first()
+            
+            if passenger_ride:
+                status = passenger_ride.status
         # Format the response
         ride_data = {
             "rideID": ride.ride_id,
@@ -66,11 +85,12 @@ def get_ride_by_id(ride_id):
             "Passenger_count": ride.passenger_count,
             "seatsOccupied": ride.seats_occupied if hasattr(ride, 'seats_occupied') else 0,
             "fare": float(ride.fare) if hasattr(ride, 'fare') else 0.0,
-            "status": ride.status
+            "status": status
         }
         
         return jsonify(ride_data), 200
     except Exception as e:
+        logging.error(f"get_ride_by_id error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @ride_bp.route('/<int:ride_id>/passenger/<int:passenger_id>', methods=['GET'])
@@ -180,10 +200,21 @@ def reject_ride_request():
 @role_required(['driver'])
 def get_driver_ride_requests(driver_id):
     """Get all pending ride requests for a specific driver"""
-    # Get ride requests
-    requests_data = ride_service.get_driver_ride_requests(driver_id)
-    
-    return jsonify(requests_data), 200
+    try:
+        # Get the authenticated user's ID
+        auth_user_id = request.user.user_id
+        
+        # Ensure the authenticated driver is requesting their own ride requests
+        if auth_user_id != driver_id:
+            return jsonify({"error": "You can only view your own ride requests"}), 403
+        
+        # Get ride requests
+        requests_data = ride_service.get_driver_ride_requests(driver_id)
+        
+        return jsonify(requests_data), 200
+    except Exception as e:
+        logging.error(f"Error in get_driver_ride_requests route: {str(e)}")
+        return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
 
 @ride_bp.route('/requests/<string:passenger_ride_id>', methods=['GET'])
 @token_required
@@ -443,5 +474,148 @@ def cancel_ride_request(ride_id):
         )
     
     return jsonify({"message": "Ride request cancelled successfully"}), 200
+
+@ride_bp.route('/<int:ride_id>/complete', methods=['POST'])
+@role_required(['passenger'])
+def complete_ride(ride_id):
+    """Mark a ride as completed by a passenger"""
+    # Get the passenger ID from the authenticated user
+    passenger_id = request.user.user_id
+    
+    # Complete the ride
+    result, error = ride_service.complete_ride(
+        ride_id=ride_id,
+        passenger_id=passenger_id
+    )
+    
+    if error:
+        return jsonify({"error": error}), 400
+    
+    # Create notification for the driver
+    try:
+        # Get ride details
+        ride = Ride.query.get(ride_id)
+        passenger = User.query.get(passenger_id)
+        
+        if ride and passenger:
+            # Create notification for the driver
+            notification_service.create_notification(
+                user_id=ride.driver_id,
+                message=f"{passenger.name} has completed the ride from {ride.starting_location} to {ride.dropoff_location}."
+            )
+    except Exception as e:
+        # Log the error but don't fail the request
+        print(f"Error creating notification: {str(e)}")
+    
+    return jsonify(result), 200
+
+@ride_bp.route('/homepage', methods=['GET'])
+@token_required
+def get_homepage_data():
+    """Get homepage data including total rides, pending requests, and recent activity"""
+    try:
+        # Get the user ID from the authenticated user
+        user_id = request.user.user_id
+        
+        # Get homepage data
+        homepage_data = ride_service.get_homepage_data(user_id)
+        
+        return jsonify(homepage_data), 200
+    except Exception as e:
+        logging.error(f"Error in get_homepage_data route: {str(e)}")
+        return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
+
+@ride_bp.route('/filter', methods=['GET'])
+@token_required
+def filter_rides():
+    """
+    Filter rides based on status, time, or date
+    
+    Query parameters:
+    - filter_type: The type of filter to apply ('status', 'time', 'date')
+    - criteria: The filter criteria value
+    - page: Page number (default: 1)
+    - size: Page size (default: 20)
+    """
+    try:
+        # Get the user ID from the authenticated user
+        user_id = request.user.user_id
+        
+        # Get query parameters
+        filter_type = request.args.get('filter_type')
+        criteria = request.args.get('criteria')
+        
+        try:
+            page = int(request.args.get('page', 1))
+            size = int(request.args.get('size', 20))
+        except ValueError:
+            return jsonify({"error": "Invalid pagination parameters"}), 400
+        
+        # Validate pagination parameters
+        if page < 1 or size < 1:
+            return jsonify({"error": "Page and size must be positive integers"}), 400
+        
+        # Get user ride history
+        history_data = ride_service.get_user_ride_history(
+            user_id=user_id,
+            page=1,  # Get all rides for filtering, we'll paginate after filtering
+            size=1000,  # Use a large number to get all rides
+            role=None  # Don't filter by role, get all rides for the user
+        )
+        
+        rides = history_data.get('rides', [])
+        
+        # If no filter type or criteria is provided, return the unfiltered rides with pagination
+        if not filter_type or not criteria:
+            # Apply pagination after getting all rides
+            start_idx = (page - 1) * size
+            end_idx = start_idx + size
+            paginated_rides = rides[start_idx:end_idx] if start_idx < len(rides) else []
+            
+            return jsonify({
+                "rides": paginated_rides,
+                "pagination": {
+                    "currentPage": page,
+                    "pageSize": size,
+                    "totalPages": (len(rides) + size - 1) // size if rides else 1,
+                    "totalRides": len(rides),
+                    "nextPage": page + 1 if end_idx < len(rides) else None,
+                    "prevPage": page - 1 if page > 1 else None
+                }
+            }), 200
+        
+        # Check if the filter type exists in the map
+        if filter_type not in FILTER_STRATEGY_MAP:
+            return jsonify({"error": f"Invalid filter type: {filter_type}. Valid types are: {', '.join(FILTER_STRATEGY_MAP.keys())}"}), 400
+        
+        # Get the global filter context instance
+        filter_context = get_filter_context_instance()
+        
+        # Set the appropriate filter strategy based on the filter type
+        filter_strategy_class = FILTER_STRATEGY_MAP[filter_type]
+        filter_context.set_filter_strategy(filter_strategy_class())
+        
+        # Filter the rides using the selected strategy
+        filtered_rides = filter_context.filter_rides(rides, criteria)
+        
+        # Apply pagination after filtering
+        start_idx = (page - 1) * size
+        end_idx = start_idx + size
+        paginated_rides = filtered_rides[start_idx:end_idx] if start_idx < len(filtered_rides) else []
+        
+        return jsonify({
+            "rides": paginated_rides,
+            "pagination": {
+                "currentPage": page,
+                "pageSize": size,
+                "totalPages": (len(filtered_rides) + size - 1) // size if filtered_rides else 1,
+                "totalRides": len(filtered_rides),
+                "nextPage": page + 1 if end_idx < len(filtered_rides) else None,
+                "prevPage": page - 1 if page > 1 else None
+            }
+        }), 200
+    except Exception as e:
+        logging.error(f"Error in filter_rides route: {str(e)}")
+        return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
 
  

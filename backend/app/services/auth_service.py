@@ -300,6 +300,21 @@ def get_user_profile(user_id):
                     "car_type": driver.car_type,
                     "car_color": driver.car_color
                 })
+                
+                # Add donation information for drivers
+                from sqlalchemy import func
+                from app.models import Donation
+                
+                # Get total donations received
+                total_donations = db.session.query(func.sum(Donation.amount)).filter(Donation.user_id == user_id).scalar() or 0
+                
+                # Get count of donations received
+                donation_count = db.session.query(Donation).filter(Donation.user_id == user_id).count()
+                
+                user_data.update({
+                    "total_donations": float(total_donations),
+                    "donation_count": donation_count
+                })
         
         return user_data, None
     except Exception as e:

@@ -2,6 +2,7 @@ from app.models import Ride, db, User, Driver, PassengerRide
 from sqlalchemy import desc, and_
 from app.utils.builders import RideBuilder, PassengerRideBuilder, Director
 from datetime import datetime
+import logging
         
 
 def format_time_simple(dt):
@@ -114,18 +115,7 @@ def get_driver_ride_requests(driver_id):
         dict: Dictionary containing ride requests
     """
     try:
-        # Get the driver's rides
-        driver_rides = Ride.query.filter_by(driver_id=driver_id).all()
-        
-        if not driver_rides:
-            return {
-                "requests": []
-            }
-        
-        # Get ride IDs
-        ride_ids = [ride.ride_id for ride in driver_rides]
-        
-        # Get pending ride requests for these rides
+        # Get pending ride requests for rides driven by this driver
         requests_query = db.session.query(
             PassengerRide, 
             User.name.label('passenger_name'),
@@ -133,12 +123,14 @@ def get_driver_ride_requests(driver_id):
             Ride.dropoff_location,
             Ride.request_time,
             Ride.ride_id
+        ).join(
+            Ride, PassengerRide.ride_id == Ride.ride_id
+        ).join(
+            User, PassengerRide.user_id == User.user_id
         ).filter(
-            PassengerRide.ride_id.in_(ride_ids),
+            Ride.driver_id == driver_id,
             PassengerRide.status == "pending"
-        ).join(Ride, PassengerRide.ride_id == Ride.ride_id)\
-         .join(User, PassengerRide.user_id == User.user_id)\
-         .order_by(desc(Ride.request_time))
+        ).order_by(desc(Ride.request_time))
         
         request_results = requests_query.all()
         
@@ -166,6 +158,7 @@ def get_driver_ride_requests(driver_id):
             "requests": formatted_requests
         }
     except Exception as e:
+        logging.error(f"Error in get_driver_ride_requests: {str(e)}")
         return {
             "requests": [],
             "error": str(e)
@@ -678,6 +671,9 @@ def get_user_ride_history(user_id, page=1, size=20, role=None):
     all_rides = passenger_rides + driver_rides
     all_rides.sort(key=lambda x: x["requestTime"], reverse=True)
     
+    # Reverse the order of rides (so row 3 becomes row 1, etc.)
+    all_rides = all_rides[::-1]
+    
     # Calculate total across both types
     total = passenger_total + driver_total if role is None else (passenger_total if role == 'passenger' else driver_total)
     
@@ -827,4 +823,142 @@ def cancel_ride_request(ride_id, passenger_id):
         return passenger_ride, None
     except Exception as e:
         db.session.rollback()
-        return None, str(e) 
+        return None, str(e)
+
+def complete_ride(ride_id, passenger_id):
+    """
+    Mark a ride as completed for a passenger
+    
+    Args:
+        ride_id (int): ID of the ride
+        passenger_id (int): ID of the passenger
+        
+    Returns:
+        tuple: (completion_data, error)
+    """
+    try:
+        # Verify ride exists
+        ride = Ride.query.get(ride_id)
+        if not ride:
+            return None, f"Ride with ID {ride_id} not found"
+        
+        # Verify passenger exists
+        passenger = User.query.get(passenger_id)
+        if not passenger:
+            return None, f"Passenger with ID {passenger_id} not found"
+        
+        # Find the passenger ride request
+        passenger_ride = PassengerRide.query.filter_by(
+            ride_id=ride_id,
+            user_id=passenger_id
+        ).first()
+        
+        if not passenger_ride:
+            return None, f"No ride request found for passenger {passenger_id} on ride {ride_id}"
+        
+        # Check if the ride request is already completed
+        if passenger_ride.status == "completed":
+            return None, "Ride is already marked as completed"
+        
+        # Check if the ride request is in a state that can be completed
+        if passenger_ride.status not in ["approved", "accepted", "active"]:
+            return None, f"Ride request with status '{passenger_ride.status}' cannot be completed"
+        
+        # Update the passenger ride status to completed
+        passenger_ride.status = "completed"
+        db.session.commit()
+        
+        # Check if all passengers have completed the ride
+        all_completed = True
+        for pr in PassengerRide.query.filter_by(ride_id=ride_id).all():
+            if pr.status != "completed" and pr.status != "rejected" and pr.status != "cancelled":
+                all_completed = False
+                break
+        
+        # If all passengers have completed, mark the ride as completed
+        if all_completed:
+            ride.status = "completed"
+            db.session.commit()
+        
+        return {
+            "message": "Ride marked as completed successfully",
+            "rideID": ride_id,
+            "passengerID": passenger_id,
+            "status": "completed"
+        }, None
+        
+    except Exception as e:
+        db.session.rollback()
+        return None, str(e)
+
+def get_homepage_data(user_id):
+    """
+    Get homepage data including total rides, pending requests, and recent activity
+    
+    Args:
+        user_id (int): ID of the user
+        
+    Returns:
+        dict: Dictionary containing homepage data
+    """
+    try:
+        # Get user role
+        from app.models import UserRole
+        user_role = UserRole.query.filter_by(user_id=user_id).first()
+        role = user_role.role_name if user_role else "passenger"
+        
+        result = {
+            "total_rides": 0,
+            "pending_requests": 0,
+            "recent_notifications": []
+        }
+        
+        # Get total rides based on role
+        if role == "driver":
+            # For drivers: count rides they've created
+            result["total_rides"] = Ride.query.filter_by(driver_id=user_id).count()
+            
+            # For drivers: count pending ride requests they've received
+            driver_rides = Ride.query.filter_by(driver_id=user_id).all()
+            ride_ids = [ride.ride_id for ride in driver_rides]
+            
+            if ride_ids:
+                result["pending_requests"] = PassengerRide.query.filter(
+                    PassengerRide.ride_id.in_(ride_ids),
+                    PassengerRide.status == "pending"
+                ).count()
+        else:
+            # For passengers: count rides they've participated in
+            result["total_rides"] = PassengerRide.query.filter_by(user_id=user_id).count()
+            
+            # For passengers: count their pending ride requests
+            result["pending_requests"] = PassengerRide.query.filter_by(
+                user_id=user_id,
+                status="pending"
+            ).count()
+        
+        # Get recent notifications
+        from app.models import Notification
+        notifications = Notification.query.filter_by(user_id=user_id)\
+            .order_by(Notification.time.desc())\
+            .limit(5)\
+            .all()
+        
+        # Format notifications
+        for notification in notifications:
+            result["recent_notifications"].append({
+                "id": notification.notification_id,
+                "message": notification.message,
+                "created_at": notification.time.isoformat(),
+                "is_read": notification.read
+            })
+        
+        return result
+    except Exception as e:
+        logging.error(f"Error in get_homepage_data: {str(e)}")
+        return {
+            "total_rides": 0,
+            "pending_requests": 0,
+            "recent_notifications": [],
+            "error": str(e)
+        } 

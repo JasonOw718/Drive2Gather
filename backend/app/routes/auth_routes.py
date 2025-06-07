@@ -142,4 +142,16 @@ def get_profile():
     if error:
         return jsonify({"error": error}), 404
     
+    return jsonify(user_data), 200
+
+@auth_bp.route('/users/<int:user_id>', methods=['GET'])
+@token_required
+def get_user_by_id(user_id):
+    """Get a user's profile information by ID"""
+    # Get user profile
+    user_data, error = auth_service.get_user_profile(user_id)
+    
+    if error:
+        return jsonify({"error": error}), 404
+    
     return jsonify(user_data), 200 

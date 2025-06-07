@@ -16,11 +16,13 @@
       <div class="grid grid-cols-2 gap-4 mb-8">
         <div class="bg-[#F8F0FF] rounded-xl p-4 flex flex-col items-start">
           <span class="text-sm text-[#8C8C8C] mb-1">Total Rides</span>
-          <span class="text-2xl font-bold text-[#303030]">{{ statistics.totalRides }}</span>
+          <span v-if="loading" class="text-2xl font-bold text-[#303030]">...</span>
+          <span v-else class="text-2xl font-bold text-[#303030]">{{ statistics.totalRides }}</span>
         </div>
         <div class="bg-[#F8F0FF] rounded-xl p-4 flex flex-col items-start">
-          <span class="text-sm text-[#8C8C8C] mb-1">{{ userRole === 'driver' ? 'Passengers' : 'Drivers' }}</span>
-          <span class="text-2xl font-bold text-[#303030]">{{ statistics.connections }}</span>
+          <span class="text-sm text-[#8C8C8C] mb-1">Pending Requests</span>
+          <span v-if="loading" class="text-2xl font-bold text-[#303030]">...</span>
+          <span v-else class="text-2xl font-bold text-[#303030]">{{ statistics.pendingRequests }}</span>
         </div>
       </div>
 
@@ -54,12 +56,16 @@
       <!-- Recent Activity -->
       <div>
         <h2 class="text-xl font-semibold text-left text-[#303030] mb-4">Recent Activity</h2>
-        <div v-if="recentActivity.length === 0" class="text-center text-[#8C8C8C] py-8">
+        <div v-if="loading" class="text-center py-8">
+          <font-awesome-icon icon="fa-spinner" spin class="text-[#C77DFF] text-2xl" />
+        </div>
+        <div v-else-if="recentActivity.length === 0" class="text-center text-[#8C8C8C] py-8">
           No recent activity
         </div>
         <div v-else class="space-y-4">
-          <div v-for="(activity, index) in recentActivity" :key="index" 
-               class="bg-white border border-gray-200 rounded-xl p-4 flex items-start shadow-sm hover:shadow-md transition">
+          <div v-for="activity in recentActivity" :key="activity.id" 
+               class="bg-white border border-gray-200 rounded-xl p-4 flex items-start shadow-sm hover:shadow-md transition"
+               :class="{'bg-[#F8F0FF] bg-opacity-50': !activity.isRead}">
             <div class="w-10 h-10 rounded-full bg-[#F8F0FF] flex items-center justify-center mr-4 flex-shrink-0">
               <font-awesome-icon :icon="activity.icon" class="text-[#C77DFF]" />
             </div>
@@ -80,16 +86,75 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '../../stores/user';
 import RightNavbar from './rightnavbar.vue';
+import { rideService } from '../../services/api';
 
 const router = useRouter();
 const userStore = useUserStore();
+const loading = ref(false);
 
-// Initialize auth when component mounts
-onMounted(() => {
+// Statistics data
+const statistics = ref({
+  totalRides: 0,
+  pendingRequests: 0
+});
+
+// Recent activity from notifications
+const recentActivity = ref([]);
+
+// Initialize auth and fetch homepage data when component mounts
+onMounted(async () => {
   if (!userStore.isAuthenticated) {
     userStore.initializeAuth();
   }
+  
+  await fetchHomepageData();
 });
+
+// Fetch homepage data from API
+async function fetchHomepageData() {
+  loading.value = true;
+  try {
+    const response = await rideService.getHomepageData();
+    const data = response.data;
+    
+    // Update statistics
+    statistics.value = {
+      totalRides: data.total_rides || 0,
+      pendingRequests: data.pending_requests || 0
+    };
+    
+    // Convert notifications to activity format
+    recentActivity.value = (data.recent_notifications || []).map(notification => {
+      let icon = 'fa-bell';
+      
+      // Determine icon based on notification message content
+      if (notification.message.includes('completed')) {
+        icon = 'fa-check-circle';
+      } else if (notification.message.includes('message')) {
+        icon = 'fa-comment';
+      } else if (notification.message.includes('ride') || notification.message.includes('trip')) {
+        icon = 'fa-car';
+      } else if (notification.message.includes('approved')) {
+        icon = 'fa-thumbs-up';
+      } else if (notification.message.includes('rejected')) {
+        icon = 'fa-thumbs-down';
+      }
+      
+      return {
+        id: notification.id,
+        title: 'Notification',
+        description: notification.message,
+        date: new Date(notification.created_at),
+        icon: icon,
+        isRead: notification.is_read
+      };
+    });
+  } catch (error) {
+    console.error('Error fetching homepage data:', error);
+  } finally {
+    loading.value = false;
+  }
+}
 
 // Dynamic welcome message based on time of day
 const welcomeMessage = computed(() => {
@@ -100,34 +165,6 @@ const welcomeMessage = computed(() => {
 });
 
 const userRole = computed(() => userStore.currentUser?.role || 'passenger');
-
-// Mock statistics - would be fetched from backend in a real app
-const statistics = ref({
-  totalRides: userRole.value === 'driver' ? 47 : 12,
-  connections: userRole.value === 'driver' ? 83 : 9
-});
-
-// Mock recent activity - would be fetched from backend in a real app
-const recentActivity = ref([
-  {
-    title: 'Ride Completed',
-    description: 'Your ride from KL Sentral to KLCC has been completed.',
-    date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-    icon: 'fa-check-circle'
-  },
-  {
-    title: 'New Message',
-    description: 'You received a new message from your driver.',
-    date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000), // 4 days ago
-    icon: 'fa-comment'
-  },
-  {
-    title: 'Ride Booked',
-    description: 'You booked a ride from KLCC to Bangsar.',
-    date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
-    icon: 'fa-car'
-  }
-]);
 
 // Format date for display
 function formatDate(date) {

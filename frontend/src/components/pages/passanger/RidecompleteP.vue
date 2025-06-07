@@ -40,11 +40,19 @@
           <div class="text-base font-medium text-left" style="font-family: 'Poppins', sans-serif; color: #000000;">{{ ride.driverName }}</div>
           <div class="text-sm mt-1 text-left" style="font-family: 'Poppins', sans-serif; color: #8C8C8C;">{{ ride.carPlate }} • {{ ride.driverCarType }}</div>
         </div>
-        
       </div>
   
       <div class="w-full text-right">
-        <router-link :to="{ name: 'Donation' }" class="ml-2 text-sm font-medium underline" style="font-family: 'Poppins', sans-serif; color: #C77DFF;">Donate this driver??</router-link>
+        <router-link :to="{ 
+          name: 'Donation', 
+          params: { driverId: driverId },
+          query: {
+            driverName: ride.driverName,
+            driverAvatar: ride.driverAvatar,
+            carPlate: ride.carPlate,
+            driverCarType: ride.driverCarType
+          }
+        }" class="ml-2 text-sm font-medium underline" style="font-family: 'Poppins', sans-serif; color: #C77DFF;">Tip this driver</router-link>
       </div>
           
       <div class="flex-1"></div>
@@ -65,15 +73,60 @@
   
   <script setup>
   import { useRouter } from 'vue-router'
-  import { rideList } from '../../../stores/rideList.js'
+  import { ref, onMounted } from 'vue'
   
   const router = useRouter()
-  // For demo, use the first ride in the list
-  const ride = rideList[0]
+  
+  // Define props
+  const props = defineProps({
+    from: {
+      type: String,
+      default: 'MMU, Cyberjaya Campus'
+    },
+    to: {
+      type: String,
+      default: 'MRT Cyberjaya Utara Station'
+    },
+    driverName: {
+      type: String,
+      default: 'Driver Name'
+    },
+    driverAvatar: {
+      type: String,
+      default: '/assets/images/image.png'
+    },
+    carPlate: {
+      type: String,
+      default: 'ABC123'
+    },
+    driverCarType: {
+      type: String,
+      default: 'White Cultus 2015'
+    },
+    driverId: {
+      type: [String, Number],
+      default: '1'
+    }
+  })
+  
+  // Create a reactive ride object from props
+  const ride = ref({
+    from: props.from,
+    to: props.to,
+    driverName: props.driverName,
+    driverAvatar: props.driverAvatar,
+    carPlate: props.carPlate,
+    driverCarType: props.driverCarType,
+    driverId: props.driverId
+  })
   
   function goHome() {
     router.push({ name: 'Home' })
   }
+  
+  onMounted(() => {
+    console.log('Ride details:', ride.value)
+  })
   </script>
   
   <style scoped>

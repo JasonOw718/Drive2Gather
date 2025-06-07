@@ -48,13 +48,22 @@
         />
         <p v-if="confirmPasswordError" class="text-red-500 text-sm mt-1">{{ confirmPasswordError }}</p>
       </div>
-      <button type="submit" class="w-full py-3 px-4 rounded-full shadow-md bg-[#C77DFF] text-white text-base font-bold hover:bg-opacity-90 transition-all duration-300 mt-2">Change Password</button>
+      <button 
+        type="submit" 
+        class="w-full py-3 px-4 rounded-full shadow-md bg-[#C77DFF] text-white text-base font-bold hover:bg-opacity-90 transition-all duration-300 mt-2"
+        :disabled="isSubmitting"
+      >
+        {{ isSubmitting ? 'Changing Password...' : 'Change Password' }}
+      </button>
     </form>
+
+    <!-- Error message -->
+    <p v-if="generalError" class="text-red-500 text-sm mt-4 text-center">{{ generalError }}</p>
 
     <!-- Success Overlay -->
     <div v-if="showSuccess" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
       <div class="bg-[#C77DFF] text-white rounded-2xl px-6 py-2 shadow-lg text-center text-lg font-semibold">
-        Password Changed Successful
+        Password Changed Successfully
       </div>
     </div>
   </div>
@@ -74,35 +83,75 @@ const confirmPassword = ref('')
 const oldPasswordError = ref('')
 const newPasswordError = ref('')
 const confirmPasswordError = ref('')
+const generalError = ref('')
 const showSuccess = ref(false)
+const isSubmitting = ref(false)
 
-function onSubmit() {
+async function onSubmit() {
+  // Reset errors
   oldPasswordError.value = ''
   newPasswordError.value = ''
   confirmPasswordError.value = ''
+  generalError.value = ''
+  
+  // Validate inputs
   let valid = true
-  if (oldPassword.value !== userStore.currentUser.password) {
-    oldPasswordError.value = 'Old password is incorrect.'
+  
+  if (!oldPassword.value) {
+    oldPasswordError.value = 'Old password is required.'
     valid = false
   }
-  if (newPassword.value.length < 8) {
+  
+  if (!newPassword.value) {
+    newPasswordError.value = 'New password is required.'
+    valid = false
+  } else if (newPassword.value.length < 8) {
     newPasswordError.value = 'New password must be at least 8 characters.'
     valid = false
   }
+  
   if (newPassword.value !== confirmPassword.value) {
     confirmPasswordError.value = 'Passwords do not match.'
     valid = false
   }
-  if (valid) {
-    userStore.currentUser.password = newPassword.value
-    showSuccess.value = true
-    setTimeout(() => {
-      showSuccess.value = false
-      router.back()
-    }, 1500)
-    oldPassword.value = ''
-    newPassword.value = ''
-    confirmPassword.value = ''
+  
+  if (!valid) return
+  
+  // Submit to API
+  isSubmitting.value = true
+  
+  try {
+    const result = await userStore.changePassword(oldPassword.value, newPassword.value)
+    
+    if (result.success) {
+      // Show success message
+      showSuccess.value = true
+      
+      // Reset form
+      oldPassword.value = ''
+      newPassword.value = ''
+      confirmPassword.value = ''
+      
+      // Navigate back after delay
+      setTimeout(() => {
+        showSuccess.value = false
+        router.back()
+      }, 1500)
+    } else {
+      // Show error
+      generalError.value = result.error || 'Failed to change password. Please try again.'
+      
+      // If it's specifically an old password issue, show it in the right field
+      if (result.error && result.error.toLowerCase().includes('current password is incorrect')) {
+        oldPasswordError.value = 'Current password is incorrect.'
+        generalError.value = ''
+      }
+    }
+  } catch (error) {
+    console.error('Error changing password:', error)
+    generalError.value = 'An unexpected error occurred. Please try again.'
+  } finally {
+    isSubmitting.value = false
   }
 }
 </script>

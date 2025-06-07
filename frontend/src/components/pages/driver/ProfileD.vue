@@ -21,17 +21,35 @@
 
     <div v-else>
       <!-- Donation Card/Button -->
-      <button @click="showQR = true" class="w-40 h-32 rounded-1xl border-[#D2B7E5] mb-8 flex flex-col justify-between items-start relative text-left hover:bg-[#f0eaff] transition p-4">
-        <span class="text-base font-semibold text-[#000000]">Donation</span>
-        <span class="absolute bottom-4 right-4 pl-6 text-xl font-bold text-[#C77DFF] text-[18px] whitespace-nowrap">RM 123.00</span>
+      <button @click="showQR = true" class="w-full h-32 rounded-xl border border-[#D2B7E5] mb-8 flex flex-col justify-between items-start relative text-left hover:bg-[#f0eaff] transition p-4">
+        <div class="flex flex-col">
+          <span class="text-base font-semibold text-[#000000]">Donation</span>
+          <span class="text-sm text-gray-500">{{ userProfile.donation_count || 0 }} donations received</span>
+        </div>
+        <span class="absolute bottom-4 right-4 pl-6 text-xl font-bold text-[#C77DFF] text-[18px] whitespace-nowrap">RM {{ formatAmount(userProfile.total_donations) }}</span>
       </button>
 
       <!-- QR Code Modal -->
       <div v-if="showQR" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
         <div class="bg-white rounded-2xl p-6 shadow-lg flex flex-col items-center relative w-80">
-          <img src="../../../../assets/images/qrcode.jpg" alt="Donation QR Code" class="w-68 h-68 object-contain mb-4" />
           <button @click="showQR = false" class="absolute top-2 right-2 text-[#C77DFF] text-2xl font-bold">&times;</button>
-          <div class="text-[#5D7285] font-semibold mt-2">Scan to Donate</div>
+          
+          <h3 class="text-lg font-bold text-[#C77DFF] mb-2">Your Donations</h3>
+          
+          <div class="flex justify-between w-full mb-4">
+            <div class="text-center">
+              <div class="text-2xl font-bold text-[#C77DFF]">{{ userProfile.donation_count || 0 }}</div>
+              <div class="text-sm text-gray-500">Total Tips</div>
+            </div>
+            <div class="text-center">
+              <div class="text-2xl font-bold text-[#C77DFF]">RM {{ formatAmount(userProfile.total_donations) }}</div>
+              <div class="text-sm text-gray-500">Total Amount</div>
+            </div>
+          </div>
+          
+          <img src="../../../../assets/images/qrcode.jpg" alt="Donation QR Code" class="w-64 h-64 object-contain mb-4" />
+          <div class="text-[#5D7285] font-semibold">Scan to receive donations</div>
+          <p class="text-sm text-gray-500 mt-2 text-center">Share this QR code with your passengers to receive tips</p>
         </div>
       </div>
 
@@ -81,6 +99,11 @@ const userProfile = ref({})
 const loading = ref(true)
 const error = ref(null)
 const showQR = ref(false)
+
+// Format amount to 2 decimal places
+function formatAmount(amount) {
+  return (amount || 0).toFixed(2)
+}
 
 async function fetchProfile() {
   loading.value = true

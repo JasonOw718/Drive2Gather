@@ -6,7 +6,7 @@
           Thanks for using Ride2Gather - Carpooling!
         </div>
         <div class="text-base mt-2 text-left" style="font-family: 'Poppins', sans-serif; color: #8C8C8C;">
-          Your've arrived - thanks for sharing the journey.
+          You've arrived - thanks for sharing the journey.
         </div>
       </div>
       <hr class="my-2 w-full"/>
@@ -24,10 +24,10 @@
           </div>
           <div class="flex flex-col justify-between h-24 flex-1">
             <div class="mb-2 ml-4 text-left">
-              <span class="text-lg font-medium text-left" style="font-family: 'Poppins', sans-serif; color: #303030;">{{ ride.from }}</span>
+              <span class="text-lg font-medium text-left" style="font-family: 'Poppins', sans-serif; color: #303030;">{{ from }}</span>
             </div>
             <div class="mt-auto ml-4 text-left">
-              <span class="text-lg font-medium text-left" style="font-family: 'Poppins', sans-serif; color: #303030;">{{ ride.to }}</span>
+              <span class="text-lg font-medium text-left" style="font-family: 'Poppins', sans-serif; color: #303030;">{{ to }}</span>
             </div>
           </div>
         </div>
@@ -63,13 +63,21 @@
   <script setup>
   import { ref } from 'vue'
   import { useRouter } from 'vue-router'
-  import { rideList } from '../../../stores/rideList.js'
   import { useUserStore } from '../../../stores/user.js'
   
   const router = useRouter()
   
-  // For demo, use the first ride in the list
-  const ride = rideList[0]
+  // Define props for the component
+  const props = defineProps({
+    from: {
+      type: String,
+      default: 'Starting Location'
+    },
+    to: {
+      type: String,
+      default: 'Destination'
+    }
+  })
   
   // Get passenger info from user store
   const userStore = useUserStore()

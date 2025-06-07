@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useUserStore } from '@/stores/user';
+import { useToastStore } from '@/stores/toast';
 
 // Create axios instance with base URL
 const api = axios.create({
@@ -32,41 +33,25 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor for API calls
+// Response interceptor
 api.interceptors.response.use(
   response => {
     return response;
   },
-  async error => {
-    const originalRequest = error.config;
-    console.log('Response error:', error.response?.status, error.response?.data);
+  error => {
+    const toastStore = useToastStore();
     
-    // Handle token refresh or redirect to login if 401
-    if (error.response && error.response.status === 401 && !originalRequest._retry) {
-      // Check for specific authentication errors that should trigger logout
-      const errorMessage = error.response.data?.error || '';
-      const authErrors = [
-        'Token is missing',
-        'Token has expired',
-        'Invalid token',
-        'User not found'
-      ];
-      
-      // Only logout for specific authentication errors
-      if (authErrors.some(msg => errorMessage.includes(msg))) {
-        console.log(`Auth error detected: ${errorMessage}. Logging out.`);
-        originalRequest._retry = true;
-        
-        const userStore = useUserStore();
-        userStore.logout();
-        
-        // Use a small delay before redirecting to allow for state updates
-        setTimeout(() => {
-          window.location.href = '/login?reason=session_expired';
-        }, 100);
-      } else {
-        console.log(`Non-auth 401 error: ${errorMessage}. Not logging out.`);
-      }
+    // Handle error and show toast message
+    if (error.response) {
+      // Server responded with an error status
+      const errorMessage = error.response.data?.error || 'An error occurred with the request';
+      toastStore.error(errorMessage);
+    } else if (error.request) {
+      // Request was made but no response received
+      toastStore.error('No response received from server. Please check your connection.');
+    } else {
+      // Something happened in setting up the request
+      toastStore.error('Request error: ' + error.message);
     }
     
     return Promise.reject(error);
@@ -75,15 +60,57 @@ api.interceptors.response.use(
 
 export default api;
 
+// Helper function to handle API responses with toast notifications
+const withToast = async (apiCall, successMessage) => {
+  const toastStore = useToastStore();
+  try {
+    const response = await apiCall();
+    if (successMessage) {
+      toastStore.success(successMessage);
+    }
+    return response;
+  } catch (error) {
+    // Error is already handled by the response interceptor
+    throw error;
+  }
+};
+
 // Custom services built on top of the api instance
 export const authService = {
   login: (credentials) => api.post('/auth/login', credentials),
   getUsers: () => api.get('/auth/users'),
   getDrivers: () => api.get('/auth/drivers'),
-  registerPassenger: (userData) => api.post('/auth/users', userData),
-  registerDriver: (userData) => api.post('/auth/drivers', userData),
+  registerPassenger: (userData) => withToast(
+    () => api.post('/auth/users', userData),
+    'Passenger registration successful!'
+  ),
+  registerDriver: (userData) => withToast(
+    () => api.post('/auth/drivers', userData),
+    'Driver registration successful!'
+  ),
   getUserProfile: () => api.get('/auth/profile'),
-  updateUserProfile: (userData) => api.put('/auth/profile', userData)
+  updateUserProfile: (userData) => withToast(
+    () => api.put('/auth/profile', userData),
+    'Profile updated successfully!'
+  ),
+  changePassword: (passwordData) => withToast(
+    () => api.post('/auth/change-password', passwordData),
+    'Password changed successfully!'
+  )
+};
+
+export const donationService = {
+  // Create a donation
+  createDonation: (donationData) => withToast(
+    () => api.post('/donations', donationData),
+    'Donation sent successfully!'
+  ),
+  
+  // Get donations received by the current user
+  getReceivedDonations: (params) => api.get('/donations/received', { params }),
+  
+  // Get donations made by the current user
+  getMadeDonations: (params) => api.get('/donations/made', { params })
 };
 
 export const notificationService = {
@@ -91,10 +118,16 @@ export const notificationService = {
   getNotifications: (params) => api.get('/notifications', { params }),
   
   // Mark a notification as read
-  markAsRead: (notificationId) => api.put(`/notifications/read/${notificationId}`),
+  markAsRead: (notificationId) => withToast(
+    () => api.put(`/notifications/read/${notificationId}`),
+    'Notification marked as read'
+  ),
   
   // Mark all notifications as read
-  markAllAsRead: () => api.put('/notifications/read-all')
+  markAllAsRead: () => withToast(
+    () => api.put('/notifications/read-all'),
+    'All notifications marked as read'
+  )
 };
 
 export const rideService = {
@@ -107,39 +140,64 @@ export const rideService = {
       return Promise.reject(new Error('Missing required field: driverID'));
     }
     
-    return api.post('/rides', {
-      driverID: parseInt(rideData.driverID),
-      startingLocation: rideData.startingLocation,
-      dropoffLocation: rideData.dropoffLocation,
-      requestTime: rideData.requestTime,
-      Passenger_count: parseInt(rideData.Passenger_count || 1)
-    });
+    return withToast(
+      () => api.post('/rides', {
+        driverID: parseInt(rideData.driverID),
+        startingLocation: rideData.startingLocation,
+        dropoffLocation: rideData.dropoffLocation,
+        requestTime: rideData.requestTime,
+        Passenger_count: parseInt(rideData.Passenger_count || 1)
+      }),
+      'Ride created successfully!'
+    );
   },
+  
+  // Homepage data
+  getHomepageData: () => api.get('/rides/homepage'),
   
   // Ride history and details
   getUserRideHistory: (params) => api.get('/rides/user-history', { params }),
+  filterRides: (params) => api.get('/rides/filter', { params }),
   getRideDetails: (rideId) => api.get(`/rides/${rideId}`),
   getRideById: (rideId) => api.get(`/rides/${rideId}`),
   getRideDetailsWithPassengers: (rideId) => api.get(`/rides/${rideId}/details`),
   
   // Ride requests
-  requestRide: (rideId, passengerData) => api.post(`/rides/requests`, { 
-    rideID: rideId,
-    passengerID: passengerData.passengerID || 1,
-    seatCount: passengerData.seats || 1
-  }),
+  requestRide: (rideId, passengerData) => withToast(
+    () => api.post(`/rides/requests`, { 
+      rideID: rideId,
+      passengerID: passengerData.passengerID || 1,
+      seatCount: passengerData.seats || 1
+    }),
+    'Ride request submitted successfully!'
+  ),
   getDriverRideRequests: (driverId) => api.get(`/rides/driver/${driverId}/requests`),
   getPassengerRideRequests: (passengerId) => api.get(`/rides/passenger/${passengerId}/requests`),
-  approveRideRequest: (requestData) => api.post('/rides/requests/approve', {
-    rideID: requestData.rideId,
-    passengerID: requestData.passengerId
-  }),
-  rejectRideRequest: (requestData) => api.post('/rides/requests/reject', {
-    rideID: requestData.rideId,
-    passengerID: requestData.passengerId
-  }),
-  cancelRideRequest: (rideId) => api.post(`/rides/${rideId}/cancel`)
-}; 
+  approveRideRequest: (requestData) => withToast(
+    () => api.post('/rides/requests/approve', {
+      rideID: requestData.rideId,
+      passengerID: requestData.passengerId
+    }),
+    'Ride request approved!'
+  ),
+  rejectRideRequest: (requestData) => withToast(
+    () => api.post('/rides/requests/reject', {
+      rideID: requestData.rideId,
+      passengerID: requestData.passengerId
+    }),
+    'Ride request rejected'
+  ),
+  cancelRideRequest: (rideId) => withToast(
+    () => api.post(`/rides/${rideId}/cancel`),
+    'Ride request cancelled'
+  ),
+  
+  // Mark ride as completed
+  completeRide: (rideId) => withToast(
+    () => api.post(`/rides/${rideId}/complete`),
+    'Ride marked as completed!'
+  )
+};
 
 export const chatService = {
   // Get chat for a ride
@@ -149,11 +207,17 @@ export const chatService = {
   getMessages: (chatId) => api.get(`/chats/${chatId}/messages`),
   
   // Send a message in a chat
-  sendMessage: (chatId, content) => api.post(`/chats/${chatId}/messages`, { content }),
+  sendMessage: (chatId, content) => withToast(
+    () => api.post(`/chats/${chatId}/messages`, { content }),
+    null // No toast for message sending to avoid spam
+  ),
   
   // Get all chats for a user
   getUserChats: (userId) => api.get(`/chats/user/${userId}/chats`),
   
   // Create a new chat for a ride
-  createChat: (rideId) => api.post('/chats', { ride_id: rideId })
+  createChat: (rideId) => withToast(
+    () => api.post('/chats', { ride_id: rideId }),
+    'Chat room created successfully!'
+  )
 }; 

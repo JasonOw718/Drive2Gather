@@ -34,6 +34,14 @@
         >
           Pending Requests
         </button>
+        <div class="flex-grow"></div>
+        <button 
+          @click="$router.push('/ride-filter')" 
+          class="py-2 px-4 font-medium text-sm focus:outline-none text-[#C77DFF] hover:bg-[#F8F0FF] rounded-md"
+        >
+          <font-awesome-icon icon="fa-filter" class="mr-1" />
+          Filter
+        </button>
       </div>
 
       <!-- Pending Ride Requests Tab Content -->
@@ -213,7 +221,16 @@
 
             <!-- Action Button for active rides -->
             <button 
-              v-if="['pending', 'accepted', 'active'].includes(ride.status)" 
+              v-if="['pending', 'approved', 'accepted', 'active'].includes(ride.status)" 
+              @click="viewRideDetails(ride)" 
+              class="mt-3 w-full py-2 rounded-full text-[#C77DFF] border border-[#C77DFF] text-sm font-medium hover:bg-[#F8F0FF] transition"
+            >
+              View Details
+            </button>
+            
+            <!-- View Details button for all passenger rides -->
+            <button 
+              v-if="userStore.currentUser?.role === 'passenger' && !['pending', 'approved', 'accepted', 'active'].includes(ride.status)" 
               @click="viewRideDetails(ride)" 
               class="mt-3 w-full py-2 rounded-full text-[#C77DFF] border border-[#C77DFF] text-sm font-medium hover:bg-[#F8F0FF] transition"
             >
@@ -297,6 +314,10 @@ const loadRideHistory = async () => {
     });
     
     rides.value = response.data.rides;
+    
+    // Log ride statuses for debugging
+    console.log('Loaded ride history:', rides.value);
+    console.log('Ride statuses:', rides.value.map(ride => ({ id: ride.rideID, status: ride.status })));
     
     // Update pagination
     pagination.value.currentPage = response.data.page;
@@ -403,6 +424,7 @@ const formatStatus = (status) => {
   
   const statusMap = {
     'pending': 'Pending',
+    'approved': 'Approved',
     'accepted': 'Accepted',
     'active': 'Active',
     'completed': 'Completed',
@@ -419,6 +441,7 @@ const getStatusClass = (status) => {
   
   const statusClassMap = {
     'pending': 'bg-yellow-100 text-yellow-800',
+    'approved': 'bg-blue-100 text-blue-800',
     'accepted': 'bg-blue-100 text-blue-800',
     'active': 'bg-green-100 text-green-800',
     'completed': 'bg-gray-100 text-gray-800',

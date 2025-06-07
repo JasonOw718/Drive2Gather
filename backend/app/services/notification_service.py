@@ -1,13 +1,37 @@
 from datetime import datetime
 from sqlalchemy import desc
 from app.models import db, Notification, User
+from app.utils.observer_pattern import get_notification_subject, UserNotificationObserver
 import logging
 
 logger = logging.getLogger(__name__)
 
+# Observer pattern implementation
+notification_observers = {}
+
+def get_or_create_observer(user_id):
+    """
+    Get or create a notification observer for a user
+    
+    Args:
+        user_id (int): ID of the user
+        
+    Returns:
+        UserNotificationObserver: The observer for the user
+    """
+    global notification_observers
+    
+    if user_id not in notification_observers:
+        observer = UserNotificationObserver(user_id)
+        notification_subject = get_notification_subject()
+        notification_subject.attach(observer)
+        notification_observers[user_id] = observer
+    
+    return notification_observers[user_id]
+
 def create_notification(user_id, message):
     """
-    Create a new notification for a user
+    Create a new notification for a user using the observer pattern
     
     Args:
         user_id (int): ID of the user
@@ -22,20 +46,24 @@ def create_notification(user_id, message):
         if not user:
             return None, f"User with ID {user_id} not found"
             
-        # Create new notification
-        notification = Notification(
-            user_id=user_id,
-            message=message,
-            read=False,
-            time=datetime.utcnow()
-        )
+        # Use the observer pattern to create the notification
+        notification_subject = get_notification_subject()
         
-        db.session.add(notification)
-        db.session.commit()
+        # Ensure the user has an observer
+        get_or_create_observer(user_id)
+        
+        # Notify all observers (only the matching user_id observer will process it)
+        notification_subject.notify({
+            'user_id': user_id,
+            'message': message,
+            'time': datetime.utcnow()
+        })
+        
+        # Get the most recent notification for this user to return
+        notification = Notification.query.filter_by(user_id=user_id).order_by(desc(Notification.time)).first()
         
         return notification, None
     except Exception as e:
-        db.session.rollback()
         logger.error(f"Error creating notification: {str(e)}")
         return None, str(e)
 

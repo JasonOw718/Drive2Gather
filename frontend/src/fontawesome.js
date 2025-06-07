@@ -34,7 +34,12 @@ import {
   faComment,
   faHistory,
   faComments,
-  faPaperPlane
+  faPaperPlane,
+  // Add toast notification icons
+  faExclamationCircle,
+  faExclamationTriangle,
+  faInfoCircle,
+  faTimes
 } from '@fortawesome/free-solid-svg-icons'
 
 export function registerIcons() {
@@ -72,7 +77,12 @@ export function registerIcons() {
     faComment,
     faHistory,
     faComments,
-    faPaperPlane
+    faPaperPlane,
+    // Add toast notification icons
+    faExclamationCircle,
+    faExclamationTriangle,
+    faInfoCircle,
+    faTimes
     // 你可以继续添加更多你未来可能会用到的 icon
   )
 }

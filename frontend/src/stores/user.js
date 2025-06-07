@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { authService } from '../services/api'
 import router from '../router'
+import { useToastStore } from './toast'
 
 export const useUserStore = defineStore('user', {
   state: () => ({
@@ -46,12 +47,21 @@ export const useUserStore = defineStore('user', {
         // Store token in localStorage
         localStorage.setItem('token', token);
         
+        // Show success toast
+        const toastStore = useToastStore();
+        toastStore.success('Login successful!');
+        
         // Navigate to home page after successful login
         router.push('/');
         
         return true;
       } catch (error) {
         this.authError = error.response?.data?.error || 'Login failed';
+        
+        // Show error toast
+        const toastStore = useToastStore();
+        toastStore.error(this.authError);
+        
         return false;
       }
     },
@@ -60,6 +70,11 @@ export const useUserStore = defineStore('user', {
       try {
         this.authError = null;
         await authService.registerPassenger(userData);
+        
+        // Show success toast
+        const toastStore = useToastStore();
+        toastStore.success('Registration successful! Please log in.');
+        
         router.push('/login');
         return true;
       } catch (error) {
@@ -72,6 +87,11 @@ export const useUserStore = defineStore('user', {
       try {
         this.authError = null;
         await authService.registerDriver(driverData);
+        
+        // Show success toast
+        const toastStore = useToastStore();
+        toastStore.success('Driver registration successful! Please log in.');
+        
         router.push('/login');
         return true;
       } catch (error) {
@@ -88,6 +108,10 @@ export const useUserStore = defineStore('user', {
       // Remove token from localStorage
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      
+      // Show logout toast
+      const toastStore = useToastStore();
+      toastStore.info('You have been logged out.');
       
       router.push('/login-register');
     },
@@ -152,6 +176,28 @@ export const useUserStore = defineStore('user', {
         return null;
       } finally {
         this.profileLoading = false;
+      }
+    },
+    
+    async changePassword(oldPassword, newPassword) {
+      try {
+        if (!this.currentUser || !this.currentUser.user_id) {
+          return { success: false, error: 'User not authenticated' };
+        }
+        
+        const response = await authService.changePassword({
+          userId: this.currentUser.user_id,
+          oldPassword,
+          newPassword
+        });
+        
+        return { success: true };
+      } catch (error) {
+        console.error('Error changing password:', error);
+        return { 
+          success: false, 
+          error: error.response?.data?.error || 'Failed to change password' 
+        };
       }
     }
   }

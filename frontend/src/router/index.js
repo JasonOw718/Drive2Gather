@@ -24,6 +24,7 @@ import RidecompleteP from '../components/pages/passanger/RidecompleteP.vue'
 import Donation from '../components/pages/passanger/Donation.vue'
 import DonateComplete from '../components/pages/passanger/donatecomplete.vue'
 import ChatRoom from '../components/pages/shared/ChatRoom.vue'
+import RideFilter from '../components/pages/RideFilter.vue'
 
 import AdminLayout from '../components/pages/admin/AdminLayout.vue'
 import DriverRegistrationList from '../components/pages/admin/component/DriverRegistrationList.vue'
@@ -52,6 +53,12 @@ const routes = [
     path: '/create-ride',
     name: 'CreateRide',
     component: CreateRide
+  },
+  {
+    path: '/ride-filter',
+    name: 'RideFilter',
+    component: RideFilter,
+    meta: { requiresAuth: true }
   },
   {
     path: '/login-register',
@@ -167,7 +174,25 @@ const routes = [
   {
     path: '/ride-complete',
     name: 'RideComplete',
-    component: RidecompleteP
+    component: RidecompleteP,
+    props: route => ({
+      from: route.query.from,
+      to: route.query.to,
+      driverName: route.query.driverName,
+      driverAvatar: route.query.driverAvatar,
+      carPlate: route.query.carPlate,
+      driverCarType: route.query.driverCarType,
+      driverId: route.query.driverId
+    })
+  },
+  {
+    path: '/ride-completed',
+    name: 'RideCompleted',
+    component: RidecompleteD,
+    props: route => ({
+      from: route.query.from,
+      to: route.query.to
+    })
   },
   {
     path: '/dropoff',
@@ -190,9 +215,10 @@ const routes = [
     component: RidecompleteD
   },
   {
-    path: '/donation',
+    path: '/donation/:driverId',
     name: 'Donation',
-    component: Donation
+    component: Donation,
+    props: true
   },
   {
     path: '/donate-complete',

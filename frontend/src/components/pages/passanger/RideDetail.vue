@@ -11,6 +11,18 @@
 
     <div class="text-sm text-[#8C8C8C] font-normal mb-6 text-left" style="font-family: 'Poppins', sans-serif;">Seat Needed: {{ seatsLabel }}</div>
 
+    <!-- Status Badge -->
+    <div v-if="ride.status" class="flex justify-end items-start mb-3">
+      <span 
+        :class="[
+          'text-xs rounded-full px-3 py-1 font-medium', 
+          getStatusClass(ride.status)
+        ]"
+      >
+        {{ formatStatus(ride.status) }}
+      </span>
+    </div>
+
     <!-- Loading state -->
     <div v-if="loading" class="flex justify-center items-center h-64">
       <svg class="animate-spin h-12 w-12 text-[#C77DFF]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -102,6 +114,28 @@
       >
         {{ requestLoading ? 'Processing...' : 'Request for Ride' }}
       </button>
+
+      <!-- Confirm Ride Button - Only show for approved or accepted rides from history -->
+      <button 
+        v-if="fromHistory && (ride.status === 'approved' || ride.status === 'accepted')"
+        class="w-full py-3 px-4 rounded-full shadow-md bg-[#C77DFF] text-white text-base font-bold hover:bg-opacity-90 transition-all duration-300 mb-0" 
+        style="max-width: 100%;"
+        @click="completeRide"
+        :disabled="loading || completeLoading"
+      >
+        {{ completeLoading ? 'Processing...' : 'Confirm Ride' }}
+      </button>
+
+      <!-- Complete Ride Button - Only show for active rides from history -->
+      <button 
+        v-if="fromHistory && ride.status === 'active'"
+        class="w-full py-3 px-4 rounded-full shadow-md bg-[#C77DFF] text-white text-base font-bold hover:bg-opacity-90 transition-all duration-300 mb-0" 
+        style="max-width: 100%;"
+        @click="completeRide"
+        :disabled="loading || completeLoading"
+      >
+        {{ completeLoading ? 'Processing...' : 'Complete Ride' }}
+      </button>
     </div>
   </div>
 </template>
@@ -133,6 +167,7 @@ const driverInfo = ref({})
 const loading = ref(true)
 const error = ref(null)
 const requestLoading = ref(false)
+const completeLoading = ref(false)
 
 // Format time for display (HH:MM)
 const departureTime = computed(() => {
@@ -152,6 +187,40 @@ const whatsappLink = computed(() => {
   return `https://wa.me/${phone}?text=${msg}`
 })
 
+// Format status text
+const formatStatus = (status) => {
+  if (!status) return '';
+  
+  const statusMap = {
+    'pending': 'Pending',
+    'approved': 'Approved',
+    'accepted': 'Accepted',
+    'active': 'Active',
+    'completed': 'Completed',
+    'cancelled': 'Cancelled',
+    'rejected': 'Rejected'
+  };
+  
+  return statusMap[status.toLowerCase()] || status;
+};
+
+// Get CSS class for status badge
+const getStatusClass = (status) => {
+  if (!status) return '';
+  
+  const statusClassMap = {
+    'pending': 'bg-yellow-100 text-yellow-800',
+    'approved': 'bg-blue-100 text-blue-800',
+    'accepted': 'bg-blue-100 text-blue-800',
+    'active': 'bg-green-100 text-green-800',
+    'completed': 'bg-gray-100 text-gray-800',
+    'cancelled': 'bg-red-100 text-red-800',
+    'rejected': 'bg-red-100 text-red-800'
+  };
+  
+  return statusClassMap[status.toLowerCase()] || 'bg-gray-100 text-gray-800';
+};
+
 async function loadRideDetail() {
   loading.value = true
   error.value = null
@@ -160,6 +229,10 @@ async function loadRideDetail() {
     // Fetch ride details
     const response = await rideService.getRideById(rideId)
     ride.value = response.data
+    
+    // Log ride details for debugging
+    console.log('Loaded ride details:', ride.value)
+    console.log('Ride status:', ride.value.status)
     
     // Additional driver info could be fetched here if needed
     if (ride.value.driverID) {
@@ -248,6 +321,36 @@ async function requestRide() {
     }
   } finally {
     requestLoading.value = false
+  }
+}
+
+// Complete ride function
+async function completeRide() {
+  completeLoading.value = true
+  error.value = null
+  
+  try {
+    // Mark the ride as completed
+    await rideService.completeRide(rideId)
+    
+    // Navigate to passenger ride completed page
+    router.push({
+      name: 'RideComplete',
+      query: {
+        from: ride.value.startingLocation,
+        to: ride.value.dropoffLocation,
+        driverName: ride.value.driverName,
+        driverAvatar: '/assets/images/image.png',
+        carPlate: driverInfo.value.car_number || 'ABC123',
+        driverCarType: driverInfo.value.car_type || 'Sedan',
+        driverId: ride.value.driverID
+      }
+    })
+  } catch (err) {
+    console.error('Error completing ride:', err)
+    error.value = err.response?.data?.error || 'Failed to complete ride. Please try again.'
+  } finally {
+    completeLoading.value = false
   }
 }
 

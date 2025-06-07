@@ -12,7 +12,7 @@ class Config:
             cls._instance = super(Config, cls).__new__(cls)
             # Initialize with default settings
             cls._instance.settings = {
-                'DEBUG': os.environ.get('DEBUG', 'False').lower() == 'true',
+                'DEBUG': os.environ.get('DEBUG', 'True').lower() == 'true',
                 'TESTING': False,
                 'SECRET_KEY': os.environ.get('SECRET_KEY', 'dev-key-for-development-only'),
                 'SQLALCHEMY_TRACK_MODIFICATIONS': False,
