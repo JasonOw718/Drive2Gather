@@ -12,6 +12,10 @@
     </button>
     <!-- Title -->
     <div class="block font-medium text-left text-[24px] text-gray-900 mt-10 mb-6">Register</div>
+    
+    <!-- Auth Error Message -->
+    <p v-if="userStore.authError" class="text-red-500 text-sm mb-4">{{ userStore.authError }}</p>
+    
     <form class="flex flex-col gap-5 flex-1" @submit.prevent="onSubmit">
       <!-- Username -->
       <div>
@@ -79,6 +83,12 @@
           </button>
         </div>
         <p v-if="confirmPasswordError" class="text-red-500 text-sm mt-1">{{ confirmPasswordError }}</p>
+      </div>
+      <!-- License Number -->
+      <div>
+        <label for="licenseNumber" class="block text-[18px] font-semibold text-gray-800 mb-1 text-left">License Number</label>
+        <input id="licenseNumber" v-model="licenseNumber" type="text" placeholder="License Number" class="w-full border border-gray-200 bg-[#F5F5F5] px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#C77DFF] text-base rounded-lg text-black" />
+        <p v-if="licenseNumberError" class="text-red-500 text-sm mt-1">{{ licenseNumberError }}</p>
       </div>
       <!-- Car Type -->
       <div>
@@ -151,13 +161,22 @@
         </div>
       </div>
       <!-- Register Button -->
-      <button class="w-11/12 max-w-md mx-auto py-3 px-4 rounded-full shadow-md bg-[#C77DFF] text-white text-base font-bold hover:bg-opacity-90 transition-all duration-300 mt-6" type="submit">Register</button>
+      <button 
+        class="w-11/12 max-w-md mx-auto py-3 px-4 rounded-full shadow-md bg-[#C77DFF] text-white text-base font-bold hover:bg-opacity-90 transition-all duration-300 mt-6" 
+        type="submit"
+        :disabled="isLoading"
+      >
+        {{ isLoading ? 'Registering...' : 'Register' }}
+      </button>
     </form>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
+import { useUserStore } from '../../../stores/user'
+
+const userStore = useUserStore()
 const username = ref('')
 const email = ref('')
 const phone = ref('')
@@ -165,6 +184,7 @@ const password = ref('')
 const confirmPassword = ref('')
 const carType = ref('')
 const carPlate = ref('')
+const licenseNumber = ref('')
 const seatAvailable = ref('')
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
@@ -175,10 +195,13 @@ const passwordError = ref('')
 const confirmPasswordError = ref('')
 const carTypeError = ref('')
 const carPlateError = ref('')
+const licenseNumberError = ref('')
 const seatAvailableError = ref('')
 const photoFiles = ref([{ preview: null }])
 const licenseFiles = ref([{ preview: null }, { preview: null }])
 const carFiles = ref([{ preview: null }, { preview: null }, { preview: null }, { preview: null }])
+const isLoading = ref(false)
+
 function validateEmail(val) {
   return /@.+\..+/.test(val)
 }
@@ -205,7 +228,7 @@ function onFileChange(e, type, idx) {
   }
   reader.readAsDataURL(file)
 }
-function onSubmit() {
+async function onSubmit() {
   usernameError.value = ''
   emailError.value = ''
   phoneError.value = ''
@@ -213,8 +236,10 @@ function onSubmit() {
   confirmPasswordError.value = ''
   carTypeError.value = ''
   carPlateError.value = ''
+  licenseNumberError.value = ''
   seatAvailableError.value = ''
   let valid = true
+  
   if (!username.value) {
     usernameError.value = 'Username is required.'
     valid = false
@@ -243,12 +268,39 @@ function onSubmit() {
     carPlateError.value = 'Car plate is required.'
     valid = false
   }
+  if (!licenseNumber.value) {
+    licenseNumberError.value = 'License number is required.'
+    valid = false
+  }
   if (!seatAvailable.value || isNaN(Number(seatAvailable.value))) {
     seatAvailableError.value = 'Enter a valid seat number.'
     valid = false
   }
+  
   if (valid) {
-    alert('Registration successful!')
+    isLoading.value = true
+    try {
+      // Format the phone number with Malaysia country code
+      const formattedPhone = `+60${phone.value}`
+      
+      // Prepare driver data for registration
+      const driverData = {
+        name: username.value,
+        email: email.value,
+        phone: formattedPhone,
+        password: password.value,
+        licenseNumber: licenseNumber.value,
+        carNumber: carPlate.value,
+        carType: carType.value,
+        carColour: 'Not specified' // You could add a car color field if needed
+      }
+      
+      await userStore.registerDriver(driverData)
+    } catch (error) {
+      console.error('Driver registration error:', error)
+    } finally {
+      isLoading.value = false
+    }
   }
 }
 </script>

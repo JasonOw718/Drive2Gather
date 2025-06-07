@@ -41,11 +41,15 @@ const routes = [
     name: 'Home',
     beforeEnter: (to, from, next) => {
       const userStore = useUserStore()
-      const role = userStore.currentUser?.role
-      if (role === 'driver') {
-        next({ name: 'CreateRide' })
+      if (!userStore.isAuthenticated) {
+        next({ name: 'LoginRegister' })
       } else {
-        next({ name: 'FindRide' })
+        const role = userStore.currentUser?.role
+        if (role === 'driver') {
+          next({ name: 'CreateRide' })
+        } else {
+          next({ name: 'FindRide' })
+        }
       }
     }
   },
@@ -218,6 +222,21 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+router.beforeEach((to, from, next) => {
+  const userStore = useUserStore()
+  const isAuthenticated = userStore.isAuthenticated
+  
+  // These routes don't require authentication
+  const publicRoutes = ['Login', 'LoginRegister', 'RegisterP', 'RegisterD', 'ForgotPassword']
+  
+  if (!isAuthenticated && !publicRoutes.includes(to.name)) {
+    // Redirect to login if trying to access a protected route while not authenticated
+    next({ name: 'LoginRegister' })
+  } else {
+    next()
+  }
 })
 
 export default router

@@ -52,6 +52,9 @@
         <p v-if="passwordError" class="text-red-500 text-sm mt-1">{{ passwordError }}</p>
       </div>
 
+      <!-- Auth Error Message -->
+      <p v-if="userStore.authError" class="text-red-500 text-sm mt-2">{{ userStore.authError }}</p>
+
       <!-- Forgot Password Link -->
       <router-link
         to="/forgot-password"
@@ -65,13 +68,13 @@
     </form>
 
     <!-- Fixed Log In Button -->
-
     <div class="w-full pb-10 fixed bottom-0 left-0 flex flex-col items-center px-5">
       <button
         class="w-full max-w-md py-3 px-4 rounded-full shadow-md bg-[#C77DFF] text-white text-base font-bold hover:bg-opacity-90 transition-all duration-300"
         @click="onSubmit"
+        :disabled="isLoading"
       >
-        Log In
+        {{ isLoading ? 'Logging in...' : 'Log In' }}
       </button>
     </div>
 
@@ -80,39 +83,45 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useUserStore } from '../../../stores/user'
 
-const router = useRouter()
+const userStore = useUserStore()
 const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
 const emailError = ref('')
 const passwordError = ref('')
+const isLoading = ref(false)
 
 function validateEmail(val) {
-  // Must contain @ and end with domain.com
-  return /.+@.+\.[a-zA-Z]{2,}$/.test(val) && val.includes('@domain.com')
+  return /.+@.+\.[a-zA-Z]{2,}$/.test(val)
 }
-function validatePassword(val) {
-  // At least 8 chars, includes letters and numbers
-  return /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/.test(val)
-}
-function onSubmit() {
+
+async function onSubmit() {
   emailError.value = ''
   passwordError.value = ''
   let valid = true
-  if (!validateEmail(email.value)) {
-    emailError.value = 'Please enter a valid @domain.com email.'
+
+  if (!email.value) {
+    emailError.value = 'Email is required.'
+    valid = false
+  } else if (!validateEmail(email.value)) {
+    emailError.value = 'Please enter a valid email.'
     valid = false
   }
-  if (!validatePassword(password.value)) {
-    passwordError.value = 'Password must be at least 8 characters and include letters and numbers.'
+
+  if (!password.value) {
+    passwordError.value = 'Password is required.'
     valid = false
   }
+
   if (valid) {
-    // Handle login logic here
-    // router.push('/dashboard')
-    alert('Login successful!')
+    isLoading.value = true
+    try {
+      await userStore.login(email.value, password.value)
+    } finally {
+      isLoading.value = false
+    }
   }
 }
 </script>

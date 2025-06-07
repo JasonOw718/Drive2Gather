@@ -15,6 +15,10 @@
     </button>
     <!-- Title -->
     <div class="block font-medium text-left text-[24px] text-gray-900 mt-10 mb-6">Register</div>
+    
+    <!-- Auth Error Message -->
+    <p v-if="userStore.authError" class="text-red-500 text-sm mb-4">{{ userStore.authError }}</p>
+    
     <!-- Form Section -->
     <form class="flex flex-col gap-5 flex-1" @submit.prevent="onSubmit">
       <!-- Username -->
@@ -108,8 +112,9 @@
       <button
         class="w-11/12 max-w-md mx-auto py-3 px-4 rounded-full shadow-md bg-[#C77DFF] text-white text-base font-bold hover:bg-opacity-90 transition-all duration-300 mt-6"
         type="submit"
+        :disabled="isLoading"
       >
-        Register
+        {{ isLoading ? 'Registering...' : 'Register' }}
       </button>
     </form>
   </div>
@@ -117,8 +122,9 @@
 
 <script setup>
 import { ref } from 'vue'
-// import { useRouter } from 'vue-router' // Uncomment if navigation needed
-// const router = useRouter()
+import { useUserStore } from '../../../stores/user'
+
+const userStore = useUserStore()
 const username = ref('')
 const email = ref('')
 const phone = ref('')
@@ -131,6 +137,8 @@ const emailError = ref('')
 const phoneError = ref('')
 const passwordError = ref('')
 const confirmPasswordError = ref('')
+const isLoading = ref(false)
+
 function validateEmail(val) {
   return /.+@.+\.[a-zA-Z]{2,}$/.test(val)
 }
@@ -144,7 +152,7 @@ function onPhoneInput(e) {
   // Only allow digits, max 10
   phone.value = e.target.value.replace(/\D/g, '').slice(0, 10)
 }
-function onSubmit() {
+async function onSubmit() {
   usernameError.value = ''
   emailError.value = ''
   phoneError.value = ''
@@ -172,9 +180,25 @@ function onSubmit() {
     valid = false
   }
   if (valid) {
-    // Registration logic here
-    alert('Registration successful!')
-    // router.push('/login')
+    isLoading.value = true
+    try {
+      // Format the phone number with Malaysia country code
+      const formattedPhone = `+60${phone.value}`
+      
+      // Prepare user data for registration
+      const userData = {
+        name: username.value,
+        email: email.value,
+        phone: formattedPhone,
+        password: password.value
+      }
+      
+      await userStore.registerPassenger(userData)
+    } catch (error) {
+      console.error('Registration error:', error)
+    } finally {
+      isLoading.value = false
+    }
   }
 }
 </script>

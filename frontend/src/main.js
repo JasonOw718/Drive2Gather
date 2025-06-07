@@ -8,11 +8,19 @@ import { createPinia } from 'pinia'
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { registerIcons } from './fontawesome'
+import { useUserStore } from './stores/user'
 
 registerIcons()
 
 const app = createApp(App)
-app.use(createPinia()) 
+const pinia = createPinia()
+
+app.use(pinia)
 app.use(router)
+
+// Initialize authentication state before mounting the app
+const userStore = useUserStore(pinia)
+userStore.initializeAuth()
+
 app.component('font-awesome-icon', FontAwesomeIcon)
 app.mount('#app')
