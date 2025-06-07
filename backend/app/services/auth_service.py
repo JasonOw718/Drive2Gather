@@ -17,29 +17,41 @@ def register_user(name, email, phone, password):
     if existing_user:
         return None, "Email already registered"
 
-    # Create new user
-    hashed_password = generate_password_hash(password)
-    new_user = User(
-        name=name,
-        email=email,
-        phone=phone,
-        password=hashed_password
-    )
-    db.session.add(new_user)
-    db.session.flush()  # Get the user_id before commit
+    # Use Builder pattern to create user
+    from app.utils.builders import UserBuilder, Director
     
-    # Add default passenger role
-    role = UserRole(role_name="passenger")
-    role.user_id = new_user.user_id
-    db.session.add(role)
+    user_builder = UserBuilder()
+    director = Director(user_builder)
     
-    # Create passenger profile
-    passenger = Passenger(user_id=new_user.user_id)
-    db.session.add(passenger)
+    user_data = {
+        'name': name,
+        'email': email,
+        'phone': phone,
+        'password': password,
+        'role': 'passenger'
+    }
     
-    db.session.commit()
-    
-    return new_user, None
+    try:
+        new_user = director.construct_user(user_data)
+        db.session.add(new_user)
+        db.session.flush()  # Get the user_id before commit
+        
+        # Add default passenger role
+        role = UserRole(role_name="passenger")
+        role.user_id = new_user.user_id
+        db.session.add(role)
+        
+        # Create passenger profile
+        passenger = Passenger(user_id=new_user.user_id)
+        db.session.add(passenger)
+        
+        db.session.commit()
+        
+        return new_user, None
+        
+    except Exception as e:
+        db.session.rollback()
+        return None, str(e)
 
 def login_user(email, password):
     """Authenticate a user and return JWT"""
@@ -158,44 +170,57 @@ def register_driver(name, email, phone, password, license_number, car_number, ca
     if existing_user:
         return None, "Email already registered"
 
-    # Create new user
-    hashed_password = generate_password_hash(password)
-    new_user = User(
-        name=name,
-        email=email,
-        phone=phone,
-        password=hashed_password
-    )
-    db.session.add(new_user)
-    db.session.flush()  # Get the user_id before commit
+    # Use Builder pattern to create driver
+    from app.utils.builders import DriverBuilder, Director
     
-    # Add driver role
-    role = UserRole(role_name="driver")
-    role.user_id = new_user.user_id
-    db.session.add(role)
+    driver_builder = DriverBuilder()
+    director = Director(driver_builder)
     
-    # Create driver profile
-    driver = Driver(
-        user_id=new_user.user_id,
-        license_number=license_number,
-        car_number=car_number,
-        car_type=car_type,
-        car_color=car_color
-    )
-    db.session.add(driver)
+    driver_data = {
+        'name': name,
+        'email': email,
+        'phone': phone,
+        'password': password,
+        'license_number': license_number,
+        'car_number': car_number,
+        'car_type': car_type,
+        'car_color': car_color
+    }
     
-    db.session.commit()
+    new_user, driver = director.construct_driver(driver_data)
     
-    return {
-        "name": new_user.name,
-        "email": new_user.email,
-        "phone": new_user.phone,
-        "role": "driver",
-        "licenseNumber": driver.license_number,
-        "carNumber": driver.car_number,
-        "carType": driver.car_type,
-        "carColour": driver.car_color
-    }, None
+    try:
+        # Add user to the database first
+        db.session.add(new_user)
+        db.session.flush()  # Get the user_id before creating other objects
+        
+        # Now that we have the user_id, ensure it's set in the driver
+        driver.user_id = new_user.user_id
+        
+        # Add driver role
+        role = UserRole(role_name="driver")
+        role.user_id = new_user.user_id
+        db.session.add(role)
+        
+        # Add driver profile
+        db.session.add(driver)
+        
+        db.session.commit()
+        
+        return {
+            "name": new_user.name,
+            "email": new_user.email,
+            "phone": new_user.phone,
+            "role": "driver",
+            "licenseNumber": driver.license_number,
+            "carNumber": driver.car_number,
+            "carType": driver.car_type,
+            "carColour": driver.car_color
+        }, None
+        
+    except Exception as e:
+        db.session.rollback()
+        return None, str(e)
 
 def generate_token(user):
     """Generate JWT token"""

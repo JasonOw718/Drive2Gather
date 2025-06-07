@@ -1,7 +1,8 @@
-from app.models import Ride, db, User, Driver, PassengerRide, Passenger
-from datetime import datetime
+from app.models import Ride, db, User, Driver, PassengerRide
 from sqlalchemy import desc, and_
-from sqlalchemy.orm import joinedload
+from app.utils.builders import RideBuilder, PassengerRideBuilder, Director
+from datetime import datetime
+        
 
 def format_time_simple(dt):
     """Format datetime to simple time format (e.g., '05:00 PM')"""
@@ -418,12 +419,20 @@ def request_ride(ride_id, passenger_id, seat_count):
         if existing_request:
             return None, "Passenger has already requested this ride"
         
-        # Create new ride request
-        passenger_ride = PassengerRide(
-            user_id=passenger_id,
-            ride_id=ride_id,
-            status="pending"
-        )
+        passenger_ride_builder = PassengerRideBuilder()
+        director = Director(passenger_ride_builder)
+        
+        passenger_ride_data = {
+            'user_id': passenger_id,
+            'ride_id': ride_id,
+            'status': 'pending'
+        }
+        
+        passenger_ride = director.construct_passenger_ride(passenger_ride_data)
+        
+        # Explicitly set the composite primary key values
+        passenger_ride.user_id = passenger_id
+        passenger_ride.ride_id = ride_id
         
         db.session.add(passenger_ride)
         db.session.commit()
@@ -461,20 +470,22 @@ def create_ride(driver_id, starting_location, dropoff_location, passenger_count,
         if not driver:
             return None, f"Driver with ID {driver_id} not found"
             
-        # Use provided request_time or current time
-        if request_time is None:
-            request_time = datetime.utcnow()
+        # Use Builder pattern to create ride
+        ride_builder = RideBuilder()
+        director = Director(ride_builder)
         
-        print(driver_id)
-        # Create new ride
-        new_ride = Ride(
-            driver_id=driver_id,
-            starting_location=starting_location,
-            dropoff_location=dropoff_location,
-            request_time=request_time,
-            status="pending",
-            passenger_count=passenger_count
-        )
+        ride_data = {
+            'driver_id': driver_id,
+            'starting_location': starting_location,
+            'dropoff_location': dropoff_location,
+            'passenger_count': passenger_count
+        }
+        
+        if request_time:
+            ride_data['request_time'] = request_time
+        
+        # Construct the ride using the director
+        new_ride = director.construct_ride(ride_data)
         
         db.session.add(new_ride)
         db.session.commit()
