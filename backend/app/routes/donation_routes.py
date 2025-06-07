@@ -35,11 +35,19 @@ def create_donation():
         if int(data['donorId']) != current_user_id:
             return jsonify({"error": "Donor ID must match authenticated user"}), 403
         
+        # Get payment method (default to stripe if not provided)
+        payment_method = data.get('paymentMethod', 'stripe')
+        
+        # Validate payment method
+        if payment_method not in ['stripe', 'paypal']:
+            return jsonify({"error": "Invalid payment method. Must be 'stripe' or 'paypal'"}), 400
+        
         # Create donation
         donation_data, error = donation_service.create_donation(
             user_id=data['userId'],
             donor_id=data['donorId'],
             amount=amount,
+            payment_method=payment_method,
             description=data.get('description')
         )
         
@@ -54,7 +62,7 @@ def create_donation():
             # Create notification for the recipient
             notification_service.create_notification(
                 user_id=data['userId'],
-                message=f"You received a donation of RM {amount:.2f} from {donor.name}."
+                message=f"You received a donation of RM {amount:.2f} from {donor.name} via {payment_method.capitalize()}."
             )
         
         return jsonify(donation_data), 201

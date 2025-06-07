@@ -68,7 +68,7 @@
             </template>
           </div>
         </div>
-        <img src="../../../../assets/images/image.png" alt="Driver Avatar" class="w-10 h-10 rounded-full object-cover border border-gray-200" />
+        <img src="@/assets/images/image.png" alt="Driver Avatar" class="w-10 h-10 rounded-full object-cover border border-gray-200" />
       </div>
 
       <!-- Chat Room Button -->
@@ -83,15 +83,15 @@
       <!-- Car Detail Row -->
       <div class="flex items-center gap-3 mb-4">
         <font-awesome-icon icon="fa-solid fa-car" class="text-[#303030] text-xl" />
-        <span class="text-base text-[#000000]" style="font-family: 'Poppins', sans-serif;">{{ driverInfo.car_number || 'Not available' }}</span>
+        <span class="text-base text-[#000000]" style="font-family: 'Poppins', sans-serif;">{{ ride.carNumber || 'Not available' }}</span>
       </div>
 
       <!-- Car Type and Photo Row -->
       <div class="flex items-center justify-between mb-8">
-        <div class="text-base text-[#303030] font-medium" style="font-family: 'Poppins', sans-serif;">{{ driverInfo.car_type || 'Not available' }}</div>
+        <div class="text-base text-[#303030] font-medium" style="font-family: 'Poppins', sans-serif;">{{ ride.carType || 'Not available' }}</div>
         <div class="flex gap-2">
-          <img src="../../../../assets/images/carphoto.jpg" alt="Car Photo" class="w-20 h-14 object-cover rounded-lg border border-gray-200" />
-          <img src="../../../../assets/images/carphoto.jpg" alt="Car Photo" class="w-20 h-14 object-cover rounded-lg border border-gray-200" />
+          <img src="@/assets/images/carphoto.jpg" alt="Car Photo" class="w-20 h-14 object-cover rounded-lg border border-gray-200" />
+          <img src="@/assets/images/carphoto.jpg" alt="Car Photo" class="w-20 h-14 object-cover rounded-lg border border-gray-200" />
         </div>
       </div>
 
@@ -236,7 +236,7 @@ async function loadRideDetail() {
     
     // Additional driver info could be fetched here if needed
     if (ride.value.driverID) {
-      // For now, we're using placeholder data
+      // Use car information from API response
       driverInfo.value = {
         car_type: ride.value.carType || 'Sedan',
         car_number: ride.value.carNumber || 'ABC123',
@@ -340,9 +340,9 @@ async function completeRide() {
         from: ride.value.startingLocation,
         to: ride.value.dropoffLocation,
         driverName: ride.value.driverName,
-        driverAvatar: '/assets/images/image.png',
-        carPlate: driverInfo.value.car_number || 'ABC123',
-        driverCarType: driverInfo.value.car_type || 'Sedan',
+        driverAvatar: '@/assets/images/image.png',
+        carPlate: ride.value.carNumber || 'ABC123',
+        driverCarType: ride.value.carType || 'Sedan',
         driverId: ride.value.driverID
       }
     })

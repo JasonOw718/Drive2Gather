@@ -127,13 +127,13 @@ async function loadRides() {
       from: ride.startingLocation,
       to: ride.dropoffLocation,
       driverName: ride.driverName,
-      driverAvatar: '../../../../assets/images/image.png', // Default avatar
+      driverAvatar: '@/assets/images/image.png', // Default avatar
       seatAvailable: ride.Passenger_count,
       seatFilled: 0, // This would need to be calculated from passengers if available
       driverPhone: '123-456-7890', // This would come from the driver details
       driverCarType: 'Sedan', // This would come from the driver details
       carPlate: 'ABC123', // This would come from the driver details
-      carPhoto: '../../../../assets/images/carphoto.jpg', // Default car image
+      carPhoto: '@/assets/images/carphoto.jpg', // Default car image
       driverID: ride.driverID,
       status: ride.status,
       requestTime: ride.requestTime

@@ -26,7 +26,7 @@
           :key="isAccepted"
           :class="['w-28 h-20 object-contain', isAccepted ? 'car-animate' : '']"
           :style="carStyle"
-          src="../../../../assets/images/caricon.jpg"
+          src="@/assets/images/caricon.jpg"
           alt="Car Icon"
         />
       </div>

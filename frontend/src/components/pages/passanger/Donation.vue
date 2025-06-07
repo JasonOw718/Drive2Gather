@@ -15,7 +15,7 @@
 
     <!-- Heart Icon -->
     <div class="flex flex-col items-start mt-16 mb-4">
-      <img src="/src/assets/images/heart.png" alt="Donation" class="w-20 h-20 object-contain mb-2" style="filter: drop-shadow(0 2px 8px #C77DFF33);" />
+      <img src="@/assets/images/heart.png" alt="Donation" class="w-20 h-20 object-contain mb-2" style="filter: drop-shadow(0 2px 8px #C77DFF33);" />
       <div class="text-2xl font-medium text-left mt-2" style="font-family: 'Roboto', sans-serif; color: #C77DFF;">Donation</div>
     </div>
 
@@ -32,7 +32,7 @@
 
     <!-- Driver Information -->
     <div v-else class="flex flex-row items-center mb-6 w-full">
-      <img :src="driver.driverAvatar || '/src/assets/images/default-avatar.png'" alt="Driver Avatar" class="w-8 h-8 rounded-full object-cover border-0 border-[#C77DFF] mr-4" />
+      <img :src="driver.driverAvatar || '@/assets/images/default-avatar.png'" alt="Driver Avatar" class="w-8 h-8 rounded-full object-cover border-0 border-[#C77DFF] mr-4" />
       <div class="flex flex-col flex-1">
         <div class="text-base font-medium text-left" style="font-family: 'Poppins', sans-serif; color: #000000;">{{ driver.driverName }}</div>
         <div class="text-sm mt-1 text-left" style="font-family: 'Poppins', sans-serif; color: #8C8C8C;">{{ driver.carPlate }} • {{ driver.driverCarType }}</div>
@@ -49,6 +49,37 @@
         <span class="text-2xl font-bold" style="color: #C77DFF; font-family: 'Roboto', sans-serif; min-width: 80px; text-align: center;">RM {{ tipAmount.toFixed(2) }}</span>
         <button @click="increment" :disabled="tipAmount >= 100" class="w-10 h-10 flex items-center justify-center rounded-full text-[#C77DFF] text-2xl disabled:opacity-40">
           <font-awesome-icon icon="fa-plus" />
+        </button>
+      </div>
+    </div>
+
+    <!-- Payment Method Selection -->
+    <div class="mb-4">
+      <div class="text-base font-medium mb-2 text-left" style="font-family: 'Poppins', sans-serif; color: #303030;">Payment Method</div>
+      <div class="flex flex-row gap-3">
+        <button 
+          @click="paymentMethod = 'stripe'" 
+          :class="[
+            'flex-1 py-3 px-4 rounded-lg border transition-all duration-200 flex items-center justify-center gap-2',
+            paymentMethod === 'stripe' 
+              ? 'border-[#C77DFF] bg-[#F8F0FF]' 
+              : 'border-gray-300 bg-white'
+          ]"
+        >
+          <span class="text-lg" role="img" aria-label="Credit Card">💳</span>
+          <span class="font-medium" :class="paymentMethod === 'stripe' ? 'text-[#C77DFF]' : 'text-gray-700'">Stripe</span>
+        </button>
+        <button 
+          @click="paymentMethod = 'paypal'" 
+          :class="[
+            'flex-1 py-3 px-4 rounded-lg border transition-all duration-200 flex items-center justify-center gap-2',
+            paymentMethod === 'paypal' 
+              ? 'border-[#C77DFF] bg-[#F8F0FF]' 
+              : 'border-gray-300 bg-white'
+          ]"
+        >
+          <span class="text-lg" role="img" aria-label="PayPal">🅿️</span>
+          <span class="font-medium" :class="paymentMethod === 'paypal' ? 'text-[#C77DFF]' : 'text-gray-700'">PayPal</span>
         </button>
       </div>
     </div>
@@ -109,6 +140,7 @@ const driver = ref({
 
 const tipAmount = ref(1)
 const description = ref('')
+const paymentMethod = ref('stripe') // Default to Stripe
 const loading = ref(false)
 const error = ref('')
 const isLoading = ref(true)
@@ -130,7 +162,7 @@ async function fetchDriverInfo() {
     driver.value = {
       driverID: driverId,
       driverName: driverData.name || 'Driver',
-      driverAvatar: driverData.avatar || '/src/assets/images/default-avatar.png',
+      driverAvatar: driverData.avatar || '@/assets/images/default-avatar.png',
       carPlate: driverData.carPlate || 'Unknown',
       driverCarType: driverData.carType || 'Vehicle'
     }
@@ -160,6 +192,7 @@ async function donate() {
       userId: parseInt(driverId), // Driver's ID from route params
       donorId: donorId, // Current user's ID (passenger)
       amount: tipAmount.value,
+      paymentMethod: paymentMethod.value,
       description: description.value
     }
     
@@ -174,7 +207,9 @@ async function donate() {
         driverName: driver.value.driverName,
         driverAvatar: driver.value.driverAvatar,
         carPlate: driver.value.carPlate,
-        driverCarType: driver.value.driverCarType
+        driverCarType: driver.value.driverCarType,
+        paymentMethod: paymentMethod.value,
+        donorName: userStore.currentUser?.name || 'You'
       } 
     })
   } catch (err) {
@@ -185,7 +220,7 @@ async function donate() {
   }
 }
 
-// Fetch driver info when component is mounted
+// Fetch driver information on component mount
 onMounted(() => {
   fetchDriverInfo()
 })

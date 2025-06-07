@@ -56,6 +56,11 @@ def get_ride_by_id(ride_id):
         driver = User.query.join(Driver).filter(Driver.user_id == ride.driver_id).first()
         driver_name = driver.name if driver else "Unknown"
         
+        # Get driver's car information
+        driver_info = Driver.query.filter_by(user_id=ride.driver_id).first()
+        car_number = driver_info.car_number if driver_info else "Unknown"
+        car_type = driver_info.car_type if driver_info else "Unknown"
+        
         # Get the current user's ID
         user_id = request.user.user_id
 
@@ -84,8 +89,9 @@ def get_ride_by_id(ride_id):
             "requestTime": ride.request_time.isoformat(),
             "Passenger_count": ride.passenger_count,
             "seatsOccupied": ride.seats_occupied if hasattr(ride, 'seats_occupied') else 0,
-            "fare": float(ride.fare) if hasattr(ride, 'fare') else 0.0,
-            "status": status
+            "status": status,
+            "carNumber": car_number,
+            "carType": car_type
         }
         
         return jsonify(ride_data), 200

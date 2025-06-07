@@ -93,7 +93,7 @@
     },
     driverAvatar: {
       type: String,
-      default: '/assets/images/image.png'
+      default: '@/assets/images/image.png'
     },
     carPlate: {
       type: String,

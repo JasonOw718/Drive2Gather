@@ -24,7 +24,7 @@
       <div class="w-full bg-white rounded-lg shadow-sm border border-gray-100 p-4 mb-6">
         <div class="flex items-center">
           <div class="w-10 h-10 bg-gray-200 rounded-full mr-3 overflow-hidden">
-            <img :src="driverAvatar || '/src/assets/images/default-avatar.png'" alt="Driver" class="w-full h-full object-cover" />
+            <img :src="driverAvatar || '@/assets/images/default-avatar.png'" alt="Driver" class="w-full h-full object-cover" />
           </div>
           <div class="text-left">
             <h3 class="font-medium">{{ driverName }}</h3>
@@ -33,10 +33,20 @@
         </div>
       </div>
       
-      <!-- Donation Amount -->
-      <div class="w-full flex justify-between items-center mb-8">
+      <!-- Donation Details -->
+      <div class="w-full flex justify-between items-center mb-2">
         <h3 class="text-lg font-medium">Tips</h3>
         <span class="text-lg font-medium text-[#C77DFF]">RM {{ tipAmount }}</span>
+      </div>
+      
+      <!-- Payment Method -->
+      <div class="w-full flex justify-between items-center mb-8">
+        <h3 class="text-sm text-gray-600">Payment Method</h3>
+        <span class="text-sm font-medium">
+          <span class="mr-1" v-if="paymentMethod === 'paypal'">🅿️</span>
+          <span class="mr-1" v-else>💳</span>
+          {{ paymentMethod === 'paypal' ? 'PayPal' : 'Stripe' }}
+        </span>
       </div>
       
       <!-- Download Receipt Button -->
@@ -80,9 +90,12 @@ const router = useRouter()
 // Get donation details from route query params
 const tipAmount = ref(route.query.tip || '0')
 const driverName = ref(route.query.driverName || 'the driver')
-const driverAvatar = ref(route.query.driverAvatar || '/src/assets/images/default-avatar.png')
+const driverAvatar = ref(route.query.driverAvatar || '@/assets/images/default-avatar.png')
 const carInfo = ref(route.query.carPlate ? `${route.query.carPlate} • ${route.query.driverCarType || 'Vehicle'}` : 'Vehicle')
+const paymentMethod = ref(route.query.paymentMethod || 'stripe')
+const donorName = ref(route.query.donorName || 'You')
 const isGeneratingPdf = ref(false)
+const qrCodeImage = '@/assets/images/qrcode.jpg'
 
 // Format date for receipt
 const formattedDate = computed(() => {
@@ -138,23 +151,24 @@ function downloadReceipt() {
       doc.text('Donation Details', 20, 55)
       
       doc.setFontSize(12)
-      doc.text('Donor: You', 20, 65)
+      doc.text('Donor: ' + donorName.value, 20, 65)
       doc.text('Recipient: ' + driverName.value, 20, 73)
       doc.text('Car: ' + carInfo.value, 20, 81)
+      doc.text('Payment Method: ' + (paymentMethod.value === 'paypal' ? 'PayPal' : 'Stripe'), 20, 89)
       
       // Add amount
       doc.setFontSize(14)
-      doc.text('Amount', 20, 100)
-      doc.text('RM ' + tipAmount.value, 128, 100, { align: 'right' })
+      doc.text('Amount', 20, 105)
+      doc.text('RM ' + tipAmount.value, 128, 105, { align: 'right' })
       
       // Add divider
-      doc.line(20, 105, 128, 105)
+      doc.line(20, 110, 128, 110)
       
       // Add total
       doc.setFontSize(16)
       doc.setFont('helvetica', 'bold')
-      doc.text('Total', 20, 115)
-      doc.text('RM ' + tipAmount.value, 128, 115, { align: 'right' })
+      doc.text('Total', 20, 120)
+      doc.text('RM ' + tipAmount.value, 128, 120, { align: 'right' })
       
       // Add thank you note
       doc.setFontSize(12)

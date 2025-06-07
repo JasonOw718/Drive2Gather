@@ -1,8 +1,9 @@
 from app.models import db, Donation, User, Donor
 from datetime import datetime
 import logging
+from app.utils.payment_adapter import get_payment_client
 
-def create_donation(user_id, donor_id, amount, description=None):
+def create_donation(user_id, donor_id, amount, payment_method='stripe', description=None):
     """
     Create a new donation
     
@@ -10,6 +11,7 @@ def create_donation(user_id, donor_id, amount, description=None):
         user_id (int): ID of the user receiving the donation (driver)
         donor_id (int): ID of the donor (passenger)
         amount (float): Amount of the donation
+        payment_method (str): Payment method ('paypal' or 'stripe')
         description (str, optional): Description or message for the donation
         
     Returns:
@@ -32,13 +34,21 @@ def create_donation(user_id, donor_id, amount, description=None):
             donor_record = Donor(user_id=donor_id)
             db.session.add(donor_record)
         
+        # Process payment using the adapter pattern
+        payment_client = get_payment_client(payment_method)
+        payment_result = payment_client.make_payment(float(amount))
+        
+        if not payment_result.get('success'):
+            return None, f"Payment processing failed: {payment_result.get('error', 'Unknown error')}"
+        
         # Create donation
         donation = Donation(
             user_id=user_id,
             donor_id=donor_id,
             amount=float(amount),
             date=datetime.utcnow(),
-            description=description
+            description=description,
+            payment_method=payment_method
         )
         
         db.session.add(donation)
@@ -51,7 +61,9 @@ def create_donation(user_id, donor_id, amount, description=None):
             "donorId": donation.donor_id,
             "amount": float(donation.amount),
             "date": donation.date.isoformat(),
-            "description": donation.description
+            "description": donation.description,
+            "paymentMethod": donation.payment_method,
+            "transactionId": payment_result.get('transaction_id')
         }
         
         return donation_data, None
@@ -97,7 +109,8 @@ def get_user_donations(user_id, page=1, size=20):
             "donorName": donor_name,
             "amount": float(donation.amount),
             "date": donation.date.isoformat(),
-            "description": donation.description
+            "description": donation.description,
+            "paymentMethod": donation.payment_method
         })
     
     # Calculate pagination values
@@ -154,7 +167,8 @@ def get_donor_donations(donor_id, page=1, size=20):
             "recipientName": recipient_name,
             "amount": float(donation.amount),
             "date": donation.date.isoformat(),
-            "description": donation.description
+            "description": donation.description,
+            "paymentMethod": donation.payment_method
         })
     
     # Calculate pagination values

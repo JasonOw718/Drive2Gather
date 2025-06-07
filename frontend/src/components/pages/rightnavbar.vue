@@ -25,7 +25,7 @@
         <nav class="absolute top-0 right-0 h-full w-64 bg-white shadow-lg flex flex-col py-8 px-6 animate-slide-in" @click.stop>
           <!-- User Avatar -->
           <img
-            :src="userStore.currentUser?.avatar || '../../../../assets/images/image.png'"
+            :src="userStore.currentUser?.avatar || '@/assets/images/image.png'"
             alt="User Avatar"
             class="w-12 h-12 rounded-full object-cover mb-10 ml-2"
           />

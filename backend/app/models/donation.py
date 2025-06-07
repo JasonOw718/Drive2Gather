@@ -12,6 +12,7 @@ class Donation(db.Model):
     amount = Column(Float, nullable=False)
     date = Column(DateTime, default=datetime.utcnow)
     description = Column(String(255))
+    payment_method = Column(String(50), default='stripe')
     
     # Relationship with User is defined in User model
     # Relationship with Donor is defined in Donor model 
