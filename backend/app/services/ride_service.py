@@ -742,14 +742,24 @@ def get_ride_details_with_passengers(ride_id, user_role='passenger'):
     
     # Get driver details
     driver_info = None
+    car_info = None
     if ride.driver_id:
         driver = User.query.join(Driver, User.user_id == Driver.user_id).filter(Driver.user_id == ride.driver_id).first()
+        driver_details = Driver.query.filter_by(user_id=ride.driver_id).first()
+        
         if driver:
             driver_info = {
                 "driverID": driver.user_id,
                 "name": driver.name,
                 "email": driver.email,
                 "phone": driver.phone
+            }
+        
+        if driver_details:
+            car_info = {
+                "carNumber": driver_details.car_number,
+                "carType": driver_details.car_type,
+                "carColor": driver_details.car_color
             }
     
     # Get all passenger rides for this ride
@@ -791,6 +801,7 @@ def get_ride_details_with_passengers(ride_id, user_role='passenger'):
         "status": ride.status,
         "passengerCount": ride.passenger_count,
         "driver": driver_info,
+        "car": car_info,
         "passengers": passengers
     }
     

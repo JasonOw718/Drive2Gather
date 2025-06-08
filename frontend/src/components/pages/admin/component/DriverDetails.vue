@@ -24,11 +24,9 @@
                     </div>
                     <div>
                         <label class="block text-[#C77DFF] font-semibold mb-1">Car Type</label>
-                        <div class="bg-[#F8F8F8] rounded-lg px-4 py-2 text-gray-700 w-full min-w-0 break-words whitespace-normal">{{ driver.carType }}</div>
-                    </div>
-                    <div>
-                        <label class="block text-[#C77DFF] font-semibold mb-1">Seats Available</label>
-                        <div class="bg-[#F8F8F8] rounded-lg px-4 py-2 text-gray-700 w-full min-w-0 break-words whitespace-normal">{{ driver.seatAvailable }}</div>
+                        <div class="bg-[#F8F8F8] rounded-lg px-4 py-2 text-gray-700 w-full min-w-0 break-words whitespace-normal">
+                            {{ driver.carType }} <span class="text-gray-500">({{ driver.carColor }})</span>
+                        </div>
                     </div>
                 </div>
             </div>

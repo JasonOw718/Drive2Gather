@@ -57,11 +57,11 @@
         <hr class="border-t-1 border-[#C77DFF] my-1 mb-3" />
         
         <!-- Ride Status -->
-        <div class="mb-6">
+        <div class="mb-6 text-center">
           <div class="text-base font-medium text-[#303030] mb-2" style="font-family: 'Poppins', sans-serif; font-weight: 500;">
             Ride Status
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center justify-center gap-2">
             <span 
               :class="[
                 'px-3 py-1 rounded-full text-sm font-medium', 
@@ -76,6 +76,21 @@
             >
               {{ pendingRequestsCount }} Pending Request(s)
             </span>
+          </div>
+        </div>
+        
+        <!-- Car Details Section -->
+        <div class="mb-6 text-center" v-if="rideDetails.car">
+          <div class="text-base font-medium text-[#303030] mb-2" style="font-family: 'Poppins', sans-serif; font-weight: 500;">
+            Vehicle Information
+          </div>
+          <div class="flex items-center justify-center gap-3 mb-2">
+            <font-awesome-icon icon="fa-solid fa-car" class="text-[#C77DFF] text-xl" />
+            <span class="text-base text-[#303030]">{{ rideDetails.car.carNumber || 'Not available' }}</span>
+          </div>
+          <div class="flex flex-col items-center">
+            <div class="text-base text-[#303030]">{{ rideDetails.car.carType || 'Not available' }}</div>
+            <div class="text-sm text-[#8C8C8C] mt-1">{{ rideDetails.car.carColor || 'Color not specified' }}</div>
           </div>
         </div>
         

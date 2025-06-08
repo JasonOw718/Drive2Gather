@@ -170,8 +170,9 @@ export const useUserStore = defineStore('user', {
       } catch (error) {
         console.error('Error fetching user profile:', error);
         if (error.response && error.response.status === 401) {
-          // If unauthorized, logout user
+          // If unauthorized, logout user and redirect to login page
           this.logout();
+          // Redirect will be handled by the API interceptor
         }
         return null;
       } finally {

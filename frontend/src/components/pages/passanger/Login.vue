@@ -97,8 +97,11 @@
 <script setup>
 import { ref } from 'vue'
 import { useUserStore } from '../../../stores/user'
+import { useRoute, useRouter } from 'vue-router'
 
 const userStore = useUserStore()
+const route = useRoute()
+const router = useRouter()
 const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
@@ -134,8 +137,17 @@ async function onSubmit() {
     try {
       const result = await userStore.login(email.value, password.value)
       
+      if (result) {
+        // Check if there's a redirect path in query params
+        const redirectPath = route.query.redirect
+        if (redirectPath) {
+          router.push(redirectPath)
+        } else {
+          router.push('/')
+        }
+      }
       // Check if the error contains "pending" or "review" which would indicate a driver approval issue
-      if (!result && userStore.authError && 
+      else if (userStore.authError && 
           (userStore.authError.toLowerCase().includes('pending') || 
            userStore.authError.toLowerCase().includes('review'))) {
         showPendingModal.value = true

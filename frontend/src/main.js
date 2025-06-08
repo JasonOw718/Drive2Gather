@@ -10,6 +10,7 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { registerIcons } from './fontawesome'
 import { useUserStore } from './stores/user'
 import { useAdminAuthStore } from './stores/adminAuth'
+import { useDonorAuthStore } from './stores/donorAuth'
 
 registerIcons()
 
@@ -26,6 +27,10 @@ userStore.initializeAuth()
 // Initialize admin authentication state
 const adminAuthStore = useAdminAuthStore(pinia)
 adminAuthStore.initializeAdminAuth()
+
+// Initialize donor authentication state
+const donorAuthStore = useDonorAuthStore(pinia)
+donorAuthStore.initializeDonorAuth()
 
 app.component('font-awesome-icon', FontAwesomeIcon)
 app.mount('#app')

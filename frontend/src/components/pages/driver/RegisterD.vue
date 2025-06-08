@@ -96,17 +96,17 @@
         <input id="carType" v-model="carType" type="text" placeholder="Honda CR-V" class="w-full border border-gray-200 bg-[#F5F5F5] px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#C77DFF] text-base rounded-lg text-black" />
         <p v-if="carTypeError" class="text-red-500 text-sm mt-1">{{ carTypeError }}</p>
       </div>
+      <!-- Car Color -->
+      <div>
+        <label for="carColor" class="block text-[18px] font-semibold text-gray-800 mb-1 text-left">Car Color</label>
+        <input id="carColor" v-model="carColor" type="text" placeholder="White" class="w-full border border-gray-200 bg-[#F5F5F5] px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#C77DFF] text-base rounded-lg text-black" />
+        <p v-if="carColorError" class="text-red-500 text-sm mt-1">{{ carColorError }}</p>
+      </div>
       <!-- Car Plate -->
       <div>
         <label for="carPlate" class="block text-[18px] font-semibold text-gray-800 mb-1 text-left">Car Plate</label>
         <input id="carPlate" v-model="carPlate" type="text" placeholder="VLN 0314" class="w-full border border-gray-200 bg-[#F5F5F5] px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#C77DFF] text-base rounded-lg text-black" />
         <p v-if="carPlateError" class="text-red-500 text-sm mt-1">{{ carPlateError }}</p>
-      </div>
-      <!-- Seat Available -->
-      <div>
-        <label for="seatAvailable" class="block text-[18px] font-semibold text-gray-800 mb-1 text-left">Seat Available</label>
-        <input id="seatAvailable" v-model="seatAvailable" type="text" placeholder="Seat Available" maxlength="2" @input="onSeatInput" class="w-full border border-gray-200 bg-[#F5F5F5] px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#C77DFF] text-base rounded-lg text-black" />
-        <p v-if="seatAvailableError" class="text-red-500 text-sm mt-1">{{ seatAvailableError }}</p>
       </div>
       <!-- Upload Photo Section -->
       <div class="mt-6">
@@ -183,9 +183,9 @@ const phone = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 const carType = ref('')
+const carColor = ref('')
 const carPlate = ref('')
 const licenseNumber = ref('')
-const seatAvailable = ref('')
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 const usernameError = ref('')
@@ -194,9 +194,9 @@ const phoneError = ref('')
 const passwordError = ref('')
 const confirmPasswordError = ref('')
 const carTypeError = ref('')
+const carColorError = ref('')
 const carPlateError = ref('')
 const licenseNumberError = ref('')
-const seatAvailableError = ref('')
 const photoFiles = ref([{ preview: null }])
 const licenseFiles = ref([{ preview: null }, { preview: null }])
 const carFiles = ref([{ preview: null }, { preview: null }, { preview: null }, { preview: null }])
@@ -213,9 +213,6 @@ function validatePassword(val) {
 }
 function onPhoneInput(e) {
   phone.value = e.target.value.replace(/\D/g, '').slice(0, 10)
-}
-function onSeatInput(e) {
-  seatAvailable.value = e.target.value.replace(/\D/g, '').slice(0, 2)
 }
 function onFileChange(e, type, idx) {
   const file = e.target.files[0]
@@ -235,9 +232,9 @@ async function onSubmit() {
   passwordError.value = ''
   confirmPasswordError.value = ''
   carTypeError.value = ''
+  carColorError.value = ''
   carPlateError.value = ''
   licenseNumberError.value = ''
-  seatAvailableError.value = ''
   let valid = true
   
   if (!username.value) {
@@ -264,16 +261,16 @@ async function onSubmit() {
     carTypeError.value = 'Car type is required.'
     valid = false
   }
+  if (!carColor.value) {
+    carColorError.value = 'Car color is required.'
+    valid = false
+  }
   if (!carPlate.value) {
     carPlateError.value = 'Car plate is required.'
     valid = false
   }
   if (!licenseNumber.value) {
     licenseNumberError.value = 'License number is required.'
-    valid = false
-  }
-  if (!seatAvailable.value || isNaN(Number(seatAvailable.value))) {
-    seatAvailableError.value = 'Enter a valid seat number.'
     valid = false
   }
   
@@ -292,7 +289,7 @@ async function onSubmit() {
         licenseNumber: licenseNumber.value,
         carNumber: carPlate.value,
         carType: carType.value,
-        carColour: 'Not specified' // You could add a car color field if needed
+        carColour: carColor.value,
       }
       
       await userStore.registerDriver(driverData)

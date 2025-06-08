@@ -208,3 +208,76 @@ Donations: `donation.js`
 | Dropoff | `Dropoff.vue` | `ride.js` |
 | Ride Complete (Driver) | `RidecompleteD.vue` | `ride.js` |
 | Driver Report | `Report_D_side.vue` | `report.js` |
+
+# Drive2Gather Frontend
+
+This is the frontend for the Drive2Gather application, a ridesharing platform connecting drivers and passengers.
+
+## Live Demo
+
+Visit the live application: [https://jasonow718.github.io/Drive2Gather/](https://jasonow718.github.io/Drive2Gather/)
+
+## Development Setup
+
+1. Install dependencies:
+```
+npm install
+```
+
+2. Create a `.env` file in the root directory with:
+```
+VITE_API_BASE_URL=http://127.0.0.1:5000/api
+```
+
+3. Run the development server:
+```
+npm run dev
+```
+
+4. Build for production:
+```
+npm run build
+```
+
+## GitHub Pages Deployment
+
+### Automatic Deployment (GitHub Actions)
+
+This repository is set up with GitHub Actions for automatic deployment to GitHub Pages whenever changes are pushed to the main branch.
+
+The workflow:
+1. Checks out the code
+2. Sets up Node.js
+3. Installs dependencies
+4. Builds the application
+5. Deploys to GitHub Pages
+
+You can configure the API URL by setting the `VITE_API_BASE_URL` repository variable in GitHub.
+
+### Manual Deployment
+
+To manually deploy to GitHub Pages:
+
+1. Make sure you have updated the `vite.config.js` with the correct base path:
+```js
+export default defineConfig({
+  base: '/Drive2Gather/',
+  // other config...
+})
+```
+
+2. Run the deployment script:
+```
+sh deploy.sh
+```
+
+## Configuration
+
+To point to a different backend API:
+
+1. Update the `.env` file:
+```
+VITE_API_BASE_URL=https://your-api-url.com/api
+```
+
+2. Rebuild the application.

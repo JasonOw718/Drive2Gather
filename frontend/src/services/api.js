@@ -2,10 +2,15 @@ import axios from 'axios';
 import { useUserStore } from '@/stores/user';
 import { useToastStore } from '@/stores/toast';
 import { useAdminAuthStore } from '@/stores/adminAuth';
+import { useDonorAuthStore } from '@/stores/donorAuth';
+import router from '@/router';
+
+// Get API base URL from environment variables or use default
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Create axios instance with base URL
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:5000/api',
+  baseURL: API_BASE_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -25,10 +30,7 @@ api.interceptors.request.use(
       const token = adminAuthStore.adminToken;
       
       if (token) {
-        console.log(`Adding admin token to request: ${token.substring(0, 15)}...`);
         config.headers['Authorization'] = `Bearer ${token}`;
-      } else {
-        console.log('No admin token available for admin request');
       }
     } else {
       // For regular endpoints, use user token
@@ -36,17 +38,13 @@ api.interceptors.request.use(
       const token = userStore.token;
       
       if (token) {
-        console.log(`Adding user token to request: ${token.substring(0, 15)}...`);
         config.headers['Authorization'] = `Bearer ${token}`;
-      } else {
-        console.log('No user token available for request');
       }
     }
     
     return config;
   },
   error => {
-    console.error('Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
@@ -59,7 +57,36 @@ api.interceptors.response.use(
   error => {
     const toastStore = useToastStore();
     
-    // Handle error and show toast message
+    // Check for authentication errors (401 Unauthorized)
+    if (error.response && error.response.status === 401) {
+      // Handle token expiration or invalid credentials
+      const path = router.currentRoute.value.path;
+      
+      // Check which type of authentication failed based on the request URL
+      if (path.startsWith('/portal/admin')) {
+        // Admin authentication failed
+        const adminAuthStore = useAdminAuthStore();
+        adminAuthStore.adminLogout();
+        toastStore.error('Admin session expired. Please log in again.');
+        router.push('/portal/login');
+      } else if (path.startsWith('/portal/donor')) {
+        // Donor authentication failed
+        const donorAuthStore = useDonorAuthStore();
+        donorAuthStore.donorLogout();
+        toastStore.error('Session expired. Please log in again.');
+        router.push('/portal/login');
+      } else {
+        // Regular user authentication failed
+        const userStore = useUserStore();
+        userStore.logout();
+        toastStore.error('Session expired. Please log in again.');
+        router.push('/login-register');
+      }
+      
+      return Promise.reject(error);
+    }
+    
+    // Handle other error types
     if (error.response) {
       // Server responded with an error status
       const errorMessage = error.response.data?.error || 'An error occurred with the request';
@@ -164,7 +191,7 @@ export const feedbackService = {
     formData.append('token', token);
     
     return withToast(
-      () => axios.post('http://127.0.0.1:5000/api/feedback', formData, {
+      () => axios.post(`${API_BASE_URL}/feedback`, formData, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         }
@@ -184,7 +211,7 @@ export const feedbackService = {
       return Promise.reject(new Error('Admin authentication required'));
     }
     
-    return axios.get('http://127.0.0.1:5000/api/feedback/admin/feedbacks', {
+    return axios.get(`${API_BASE_URL}/feedback/admin/feedbacks`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -198,8 +225,6 @@ export const rideService = {
   // Ride search and creation
   searchRides: (params) => api.get('/rides', { params }),
   createRide: (rideData) => {
-    console.log('Creating ride with data:', rideData);
-    
     if (!rideData.driverID) {
       return Promise.reject(new Error('Missing required field: driverID'));
     }

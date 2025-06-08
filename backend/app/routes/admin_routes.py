@@ -116,6 +116,7 @@ def get_user_by_id(user_id):
         user_data["created_at"] = "2024-01-01"  # Placeholder, should be from User model
         
     except Exception as e:
-        print(f"Error getting additional user stats: {str(e)}")
+        # Error encountered but continue with available data
+        pass
     
     return jsonify({"user": user_data}), 200 

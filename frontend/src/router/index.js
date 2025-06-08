@@ -342,73 +342,54 @@ const routes = [
   }
 ]
 
+// Get base URL from Vite environment
+const base = import.meta.env.BASE_URL || '/'
+
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(base),
   routes
 })
 
+// Route guards
 router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
   const adminAuthStore = useAdminAuthStore()
   const donorAuthStore = useDonorAuthStore()
-  const isAuthenticated = userStore.isAuthenticated
-  const isAdminAuthenticated = adminAuthStore.isAdminAuthenticated
-  const isDonorAuthenticated = donorAuthStore.isDonorAuthenticated
-  
-  // Initialize auth on first load
-  if (from.name === undefined) {
-    adminAuthStore.initializeAdminAuth();
-    donorAuthStore.initializeDonorAuth();
-  }
-  
-  // Handle donor routes
-  if (to.path.startsWith('/portal/donor')) {
-    if (to.matched.some(record => record.meta.requiresDonorAuth)) {
-      if (!isDonorAuthenticated) {
-        next({ name: 'AdminLogin' });
-        return;
-      }
+
+  // Check if the route requires authentication
+  if (to.matched.some(record => record.meta.requiresAuth)) {
+    if (!userStore.isLoggedIn) {
+      next({
+        path: '/login-register',
+        query: { redirect: to.fullPath }
+      })
+      return
     }
   }
-  
-  // Handle admin routes
-  if (to.path.startsWith('/portal/admin')) {
-    // Admin login page is public
-    if (to.name === 'AdminLogin') {
-      // If already authenticated as admin, redirect to admin dashboard
-      if (isAdminAuthenticated) {
-        next({ path: '/portal/admin/account-management' });
-      } else {
-        next();
-      }
-      return;
-    }
-    
-    // Check if admin authentication is required
-    if (to.matched.some(record => record.meta.requiresAdminAuth)) {
-      if (!isAdminAuthenticated) {
-        next({ name: 'AdminLogin' });
-        return;
-      }
+
+  // Check if the route requires admin authentication
+  if (to.matched.some(record => record.meta.requiresAdminAuth)) {
+    if (!adminAuthStore.isAuthenticated) {
+      next({
+        path: '/portal/login',
+        query: { redirect: to.fullPath }
+      })
+      return
     }
   }
-  
-  // Handle regular user routes
-  // Check if route requires authentication
-  if (to.meta.requiresAuth && !isAuthenticated) {
-    next({ name: 'LoginRegister' })
-    return
+
+  // Check if the route requires donor authentication
+  if (to.matched.some(record => record.meta.requiresDonorAuth)) {
+    if (!donorAuthStore.isAuthenticated) {
+      next({
+        path: '/portal/login',
+        query: { redirect: to.fullPath }
+      })
+      return
+    }
   }
-  
-  // These routes don't require authentication
-  const publicRoutes = ['Login', 'LoginRegister', 'RegisterP', 'RegisterD', 'ForgotPassword', 'AdminLogin']
-  
-  if (!isAuthenticated && !to.path.startsWith('/portal') && !publicRoutes.includes(to.name) && !to.meta.requiresAuth) {
-    // Redirect to login if trying to access a protected route while not authenticated
-    next({ name: 'LoginRegister' })
-  } else {
-    next()
-  }
+
+  next()
 })
 
 export default router

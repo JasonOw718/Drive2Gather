@@ -81,15 +81,19 @@
       </div>
 
       <!-- Car Detail Row -->
-      <div class="flex items-center gap-3 mb-4">
-        <font-awesome-icon icon="fa-solid fa-car" class="text-[#303030] text-xl" />
-        <span class="text-base text-[#000000]" style="font-family: 'Poppins', sans-serif;">{{ ride.carNumber || 'Not available' }}</span>
-      </div>
-
-      <!-- Car Type and Photo Row -->
-      <div class="flex items-center justify-between mb-8">
-        <div class="text-base text-[#303030] font-medium" style="font-family: 'Poppins', sans-serif;">{{ ride.carType || 'Not available' }}</div>
-        <div class="flex gap-2">
+      <div class="mb-4 text-center">
+        <div class="text-base font-medium text-[#303030] mb-2" style="font-family: 'Poppins', sans-serif; font-weight: 500;">
+          Vehicle Information
+        </div>
+        <div class="flex items-center justify-center gap-3 mb-2">
+          <font-awesome-icon icon="fa-solid fa-car" class="text-[#303030] text-xl" />
+          <span class="text-base text-[#000000]" style="font-family: 'Poppins', sans-serif;">{{ ride.carNumber || 'Not available' }}</span>
+        </div>
+        <div class="flex flex-col items-center mb-4">
+          <div class="text-base text-[#303030] font-medium" style="font-family: 'Poppins', sans-serif;">{{ ride.carType || 'Not available' }}</div>
+          <div class="text-sm text-[#8C8C8C]" style="font-family: 'Poppins', sans-serif;">{{ ride.carColor || 'Color not specified' }}</div>
+        </div>
+        <div class="flex justify-center gap-2">
           <img src="@/assets/images/carphoto.jpg" alt="Car Photo" class="w-20 h-14 object-cover rounded-lg border border-gray-200" />
           <img src="@/assets/images/carphoto.jpg" alt="Car Photo" class="w-20 h-14 object-cover rounded-lg border border-gray-200" />
         </div>
@@ -340,6 +344,7 @@ async function completeRide() {
         driverAvatar: '@/assets/images/image.png',
         carPlate: ride.value.carNumber || 'ABC123',
         driverCarType: ride.value.carType || 'Sedan',
+        carColor: ride.value.carColor || 'White',
         driverId: ride.value.driverID
       }
     })

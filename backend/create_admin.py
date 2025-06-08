@@ -1,80 +1,72 @@
-"""
-Create an admin user for development and testing purposes.
-Run this script to add an admin user to your database.
+#!/usr/bin/env python
+# create_admin.py
 
-Usage:
-python create_admin.py
-"""
-
-import sys
 import os
-from datetime import datetime
-
-# Add the backend directory to sys.path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(current_dir)
-
-# Import the Flask app from run.py
-from flask import Flask
-from app.models import db, User, UserRole, Admin
-from config import Config
+import sys
+import sqlalchemy
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy import text
+
+# Add the app directory to the path so we can import from it
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
+
+from flask import Flask
+from app.models import db, User, Admin
+from app.routes import register_blueprints
 
 def create_admin_user():
-    """Create an admin user if it doesn't exist"""
-    # Setup a simple Flask app for this task
+    """Create an admin user if it doesn't exist."""
     app = Flask(__name__)
-    config = Config()
-    app.config.from_mapping(config.settings)
+    app.config.from_object('config.Config')
+    
+    # Initialize the database
     db.init_app(app)
     
+    # Register blueprints
+    register_blueprints(app)
+    
     with app.app_context():
-        # Check if the admin user already exists
-        existing_user = User.query.filter_by(email='admin@drive2gather.com').first()
+        # Create database tables if they don't exist
+        db.create_all()
         
-        if existing_user:
-            print("Admin user already exists!")
-            return
+        # Check if admin user already exists
+        admin = User.query.filter_by(email='admin@drive2gather.com').first()
         
-        # Create the admin user
-        admin_user = User(
-            name="Admin User",
-            email="admin@drive2gather.com",
-            phone="1234567890",
-            password=generate_password_hash("admin123")
+        if admin:
+            # Admin already exists, exit
+            return False
+        
+        # Create admin user
+        admin_password = 'admin123'
+        hashed_password = generate_password_hash(admin_password)
+        
+        # Create user record
+        admin = User(
+            name='Admin User',
+            email='admin@drive2gather.com',
+            password=hashed_password,
+            phone_number='+60123456789',
+            role='admin'
         )
         
-        # Add to database
-        db.session.add(admin_user)
-        db.session.flush()  # Get the user ID
-        
-        # Create admin role for the user
-        admin_role = UserRole(role_name="admin")
-        admin_role.user_id = admin_user.user_id
-        db.session.add(admin_role)
-        
-        # Also add to Admin table
-        admin_entry = Admin(user_id=admin_user.user_id)
-        db.session.add(admin_entry)
-        
+        # Add and commit to database
+        db.session.add(admin)
         db.session.commit()
         
-        # Now let's add a check_password method to the User class temporarily for testing
-        def check_password(self, password):
-            return check_password_hash(self.password, password)
+        # Create admin record
+        admin_record = Admin(
+            user_id=admin.id
+        )
         
-        # Attach the method to the User class
-        User.check_password = check_password
+        db.session.add(admin_record)
+        db.session.commit()
         
-        # Test that it works
-        test_user = User.query.filter_by(email='admin@drive2gather.com').first()
-        if test_user and test_user.check_password("admin123"):
-            print(f"Admin user created successfully and password verified!")
-            print(f"Email: admin@drive2gather.com")
-            print(f"Password: admin123")
+        # Verify password was set correctly
+        if check_password_hash(admin.password, admin_password):
+            return True
         else:
-            print("Warning: Admin created but password verification failed")
-            print("You may need to add a check_password method to your User model")
+            return None
 
-if __name__ == "__main__":
-    create_admin_user() 
+if __name__ == '__main__':
+    result = create_admin_user()
+    sys.exit(0) 

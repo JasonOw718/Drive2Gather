@@ -122,10 +122,24 @@ def forgot_password():
     
     # Check if user exists
     email = data['email']
-    result, error = auth_service.send_password_reset_email(email)
+    user = User.query.filter_by(email=email).first()
     
-    if error:
-        return jsonify({"error": error}), 400
+    if not user:
+        return jsonify({"error": "Email not registered"}), 404
+    
+    # Generate reset token
+    import secrets
+    token = secrets.token_urlsafe(32)
+    
+    # Store token in database or session for verification later
+    # This is a simplified implementation. In production, you'd store this securely
+    # with an expiration time, hashed, etc.
+    
+    # Send reset email
+    result = auth_service.send_password_reset_email(user, token)
+    
+    if not result:
+        return jsonify({"error": "Failed to send password reset email"}), 500
     
     return jsonify({"message": "Password reset email sent successfully"}), 200
 

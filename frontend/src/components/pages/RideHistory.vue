@@ -224,9 +224,12 @@
             <!-- Date and Driver/Passengers -->
             <div class="flex justify-between items-center text-sm text-[#8C8C8C]">
               <div>{{ formatDate(ride.requestTime) }}</div>
-              <div>
-                <span v-if="userStore.currentUser?.role === 'passenger'">Driver: {{ ride.driverName || 'Unknown' }}</span>
-                <span v-else>Seats: {{ ride.passengerCount }}</span>
+              <div v-if="userStore.currentUser?.role === 'passenger'" class="text-right">
+                <div>Driver: {{ ride.driverName || 'Unknown' }}</div>
+                <div v-if="ride.carType">{{ ride.carType }} <span v-if="ride.carColor">({{ ride.carColor }})</span></div>
+              </div>
+              <div v-else>
+                <span>Seats: {{ ride.passengerCount }}</span>
               </div>
             </div>
 

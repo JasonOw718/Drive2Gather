@@ -50,16 +50,16 @@
         <div v-else class="space-y-4 py-2">
           <div v-for="message in messages" :key="message.message_id" 
                :class="[
-                 'max-w-[80%] p-3 rounded-lg shadow-sm transition-all duration-200 animate-fadeIn', 
-                 message.user_id === currentUserId ? 
-                   'ml-auto bg-gradient-to-br from-[#C77DFF] to-[#B266FF] text-white rounded-tr-none' : 
+                 'max-w-[80%] p-3 rounded-lg shadow-sm', 
+                 isCurrentUserMessage(message) ? 
+                   'ml-auto bg-[#C77DFF] text-white rounded-tr-none' : 
                    'mr-auto bg-gray-100 text-gray-800 rounded-tl-none'
                ]">
-            <div class="text-xs mb-1 font-medium" :class="message.user_id === currentUserId ? 'text-white/90' : 'text-gray-500'">
+            <div class="text-xs mb-1 font-medium" :class="isCurrentUserMessage(message) ? 'text-white/90' : 'text-gray-500'">
               {{ message.username }}
             </div>
             <div class="text-sm leading-relaxed">{{ message.content }}</div>
-            <div class="text-xs text-right mt-1 opacity-80" :class="message.user_id === currentUserId ? 'text-white/80' : 'text-gray-500'">
+            <div class="text-xs text-right mt-1 opacity-80" :class="isCurrentUserMessage(message) ? 'text-white/80' : 'text-gray-500'">
               {{ formatTime(message.send_time) }}
             </div>
           </div>
@@ -123,7 +123,8 @@ const messagesContainer = ref(null)
 // Get current user ID
 const currentUserId = computed(() => {
   const user = JSON.parse(localStorage.getItem('user') || '{}')
-  return user.id || user.user_id
+  const userId = user.id || user.user_id || user.userId
+  return userId
 })
 
 // Load chat data
@@ -146,7 +147,6 @@ async function loadChatData() {
     // Set up polling for new messages
     startMessagePolling()
   } catch (err) {
-    console.error('Error loading chat data:', err)
     error.value = 'Failed to load chat. Please try again.'
   } finally {
     loading.value = false
@@ -165,7 +165,7 @@ async function loadMessages() {
     await nextTick()
     scrollToBottom()
   } catch (err) {
-    console.error('Error loading messages:', err)
+    // Error handled silently
   }
 }
 
@@ -236,7 +236,7 @@ function startMessagePolling() {
         scrollToBottom()
       }
     } catch (err) {
-      console.error('Error polling messages:', err)
+      // Error handled silently
     }
   }, 5000)
 }
@@ -251,6 +251,20 @@ watch(messages, async () => {
   await nextTick()
   scrollToBottom()
 })
+
+// Helper function to determine if a message is from the current user
+function isCurrentUserMessage(message) {
+  if (!message || !message.user_id) return false;
+  
+  const userId = currentUserId.value;
+  const messageUserId = message.user_id;
+  
+  // Compare both as strings to handle potential number/string type mismatches
+  const userIdStr = String(userId);
+  const messageUserIdStr = String(messageUserId);
+  
+  return userIdStr === messageUserIdStr;
+}
 </script>
 
 <style scoped>

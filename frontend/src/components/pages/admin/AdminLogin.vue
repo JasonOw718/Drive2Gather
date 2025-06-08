@@ -218,8 +218,14 @@ async function onSubmit() {
         const success = await adminAuthStore.adminLogin(email.value, password.value);
         
         if (success) {
-          // Redirect to admin dashboard
-          router.push('/portal/admin/account-management');
+          // Check if there's a redirect query param
+          const redirectFrom = router.currentRoute.value.query.redirectFrom;
+          if (redirectFrom === 'admin') {
+            // Redirect to admin dashboard or the specific page they were trying to access
+            router.push('/portal/admin/account-management');
+          } else {
+            router.push('/portal/admin/account-management');
+          }
         } else {
           error.value = adminAuthStore.authError || 'Login failed';
         }
@@ -228,8 +234,14 @@ async function onSubmit() {
         const success = await donorAuthStore.donorLogin(email.value, password.value);
         
         if (success) {
-          // Redirect to donor dashboard
-          router.push('/portal/donor/dashboard');
+          // Check if there's a redirect query param
+          const redirectFrom = router.currentRoute.value.query.redirectFrom;
+          if (redirectFrom === 'donor') {
+            // Redirect to donor dashboard or the specific page they were trying to access
+            router.push('/portal/donor/dashboard');
+          } else {
+            router.push('/portal/donor/dashboard');
+          }
         } else {
           error.value = donorAuthStore.authError || 'Login failed';
         }

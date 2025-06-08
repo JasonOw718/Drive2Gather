@@ -39,6 +39,7 @@
         <div class="flex flex-col flex-1 ml-4">
           <div class="text-base font-medium text-left" style="font-family: 'Poppins', sans-serif; color: #000000;">{{ ride.driverName }}</div>
           <div class="text-sm mt-1 text-left" style="font-family: 'Poppins', sans-serif; color: #8C8C8C;">{{ ride.carPlate }} • {{ ride.driverCarType }}</div>
+          <div class="text-xs mt-1 text-left" style="font-family: 'Poppins', sans-serif; color: #8C8C8C;">{{ ride.carColor || 'Color not specified' }}</div>
           <div class="text-xs mt-1 text-left" style="font-family: 'Poppins', sans-serif; color: #8C8C8C;">Ride ID: {{ ride.rideId || 'Not Available' }}</div>
         </div>
       </div>
@@ -109,6 +110,10 @@
       type: String,
       default: 'White Cultus 2015'
     },
+    carColor: {
+      type: String,
+      default: 'White'
+    },
     driverId: {
       type: [String, Number],
       default: '1'
@@ -127,6 +132,7 @@
     driverAvatar: props.driverAvatar,
     carPlate: props.carPlate,
     driverCarType: props.driverCarType,
+    carColor: props.carColor,
     driverId: props.driverId,
     rideId: props.rideId
   })

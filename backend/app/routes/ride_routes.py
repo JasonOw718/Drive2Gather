@@ -60,6 +60,7 @@ def get_ride_by_id(ride_id):
         driver_info = Driver.query.filter_by(user_id=ride.driver_id).first()
         car_number = driver_info.car_number if driver_info else "Unknown"
         car_type = driver_info.car_type if driver_info else "Unknown"
+        car_color = driver_info.car_color if driver_info else "Unknown"
         
         # Get the current user's ID
         user_id = request.user.user_id
@@ -69,8 +70,6 @@ def get_ride_by_id(ride_id):
         # Check if the user is a passenger by querying the Passenger table
         is_passenger = Passenger.query.filter_by(user_id=user_id).first() is not None
         # If the user is a passenger, get their specific status for this ride
-        print("--------------------------------")
-        print(ride_id)
         if is_passenger:
             passenger_ride = PassengerRide.query.filter_by(
                 ride_id=ride_id,
@@ -91,7 +90,8 @@ def get_ride_by_id(ride_id):
             "seatsOccupied": ride.seats_occupied if hasattr(ride, 'seats_occupied') else 0,
             "status": status,
             "carNumber": car_number,
-            "carType": car_type
+            "carType": car_type,
+            "carColor": car_color
         }
         
         return jsonify(ride_data), 200
@@ -517,7 +517,7 @@ def complete_ride(ride_id):
             )
     except Exception as e:
         # Log the error but don't fail the request
-        print(f"Error creating notification: {str(e)}")
+        logging.error(f"Error creating notification: {str(e)}")
     
     return jsonify(result), 200
 

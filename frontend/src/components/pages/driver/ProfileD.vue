@@ -71,7 +71,10 @@
         <!-- Driver-specific fields -->
         <div v-if="userProfile.car_type">
           <label class="block text-[18px] font-semibold text-gray-800 mb-1 text-left">Car Type</label>
-          <input type="text" :value="userProfile.car_type" disabled class="w-full border border-gray-200 bg-[#F5F5F5] px-4 py-3 text-base rounded-lg text-[#9D9FA0] focus:outline-none" />
+          <div class="flex flex-col text-left">
+            <input type="text" :value="userProfile.car_type" disabled class="w-full border border-gray-200 bg-[#F5F5F5] px-4 py-3 text-base rounded-lg text-[#9D9FA0] focus:outline-none" />
+            <div v-if="userProfile.car_color" class="text-[#9D9FA0] mt-1 ml-1">{{ userProfile.car_color }}</div>
+          </div>
         </div>
         <div v-if="userProfile.car_number">
           <label class="block text-[18px] font-semibold text-gray-800 mb-1 text-left">Car Plate</label>
