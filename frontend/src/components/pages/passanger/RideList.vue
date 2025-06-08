@@ -12,7 +12,7 @@
           {{ to }}
         </div>
         <div class="text-sm text-[#8C8C8C] font-normal text-left" style="font-family: 'Poppins', sans-serif;">
-          {{ formatDateDisplay(date) }} | {{ time }} | {{ seatsLabel }}
+          {{ seatsLabel }} | Showing soonest available rides
         </div>
       </div>
     </div>
@@ -91,8 +91,6 @@ const route = useRoute()
 // Get search parameters from query params
 const from = ref(route.query.from || 'From')
 const to = ref(route.query.to || 'To')
-const date = ref(route.query.date || new Date().toISOString().split('T')[0])
-const time = ref(route.query.time || '09:00')
 const seats = ref(Number(route.query.seats) || 1)
 
 const passengerInputStore = usePassengerInputStore()
@@ -107,26 +105,15 @@ function formatTime(isoTime) {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
-// Format date for display
-function formatDateDisplay(dateStr) {
-  if (!dateStr) return '';
-  const options = { weekday: 'short', month: 'short', day: 'numeric' };
-  return new Date(dateStr).toLocaleDateString('en-US', options);
-}
-
 // Load rides from API
 async function loadRides() {
   loading.value = true;
   error.value = null;
   
   try {
-    // Format date and time for API request
-    const requestTime = `${date.value}T${time.value}:00`;
-    
     const response = await rideService.searchRides({
       starting_location: from.value,
       dropoff_location: to.value,
-      request_time: requestTime,
       seats: seats.value.toString()
     });
     

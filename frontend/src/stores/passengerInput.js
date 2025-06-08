@@ -4,19 +4,13 @@ export const usePassengerInputStore = defineStore('passengerInput', {
   state: () => ({
     from: '',
     to: '',
-    date: '',
-    time: '',
-    seats: 1,
-    dateTime: ''
+    seats: 1
   }),
   actions: {
-    setInput({ from, to, date, time, seats, dateTime }) {
+    setInput({ from, to, seats }) {
       this.from = from
       this.to = to
-      this.date = date
-      this.time = time
       this.seats = seats
-      this.dateTime = dateTime || `${date}T${time}:00`
     }
   }
 }) 

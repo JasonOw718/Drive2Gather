@@ -1,7 +1,7 @@
 from app.models import Ride, db, User, Driver, PassengerRide
-from sqlalchemy import desc, and_
+from sqlalchemy import desc, and_, asc
 from app.utils.builders import RideBuilder, PassengerRideBuilder, Director
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
         
 
@@ -18,7 +18,7 @@ def get_all_rides(page=1, size=20, starting_location=None, dropoff_location=None
         size (int): Page size (default: 20)
         starting_location (str, optional): Filter by starting location
         dropoff_location (str, optional): Filter by dropoff location
-        request_time (str, optional): Filter by request time
+        request_time (str, optional): Filter by request time (not used anymore - automatic current time is used)
         seats (int, optional): Filter by available seats
         
     Returns:
@@ -28,7 +28,14 @@ def get_all_rides(page=1, size=20, starting_location=None, dropoff_location=None
     offset = (page - 1) * size
     
     # Start building the query with the base filter
-    query = Ride.query.filter(Ride.status != "completed")
+    # Only get rides that are not completed and scheduled in the future
+    current_time = datetime.now()
+    query = Ride.query.filter(
+        and_(
+            Ride.status != "completed",
+            Ride.request_time >= current_time
+        )
+    )
     
     # Apply additional filters if provided
     if starting_location:
@@ -36,19 +43,6 @@ def get_all_rides(page=1, size=20, starting_location=None, dropoff_location=None
     
     if dropoff_location:
         query = query.filter(Ride.dropoff_location.ilike(f'%{dropoff_location}%'))
-    
-    if request_time:
-        # Parse the time string - assuming ISO format
-        try:
-            time_obj = datetime.fromisoformat(request_time.replace('Z', '+00:00'))
-            # Filter for rides on the same day
-            from datetime import timedelta
-            start_of_day = datetime(time_obj.year, time_obj.month, time_obj.day, 0, 0, 0)
-            end_of_day = start_of_day + timedelta(days=1)
-            query = query.filter(Ride.request_time >= start_of_day, Ride.request_time < end_of_day)
-        except ValueError:
-            # If date parsing fails, ignore this filter
-            pass
     
     if seats and seats.isdigit():
         seats_num = int(seats)
@@ -65,7 +59,7 @@ def get_all_rides(page=1, size=20, starting_location=None, dropoff_location=None
         .filter(Ride.ride_id.in_([r.ride_id for r in query.all()]))\
         .outerjoin(Driver, Ride.driver_id == Driver.user_id)\
         .outerjoin(User, Driver.user_id == User.user_id)\
-        .order_by(desc(Ride.request_time))\
+        .order_by(asc(Ride.request_time))\
         .offset(offset)\
         .limit(size)
     
