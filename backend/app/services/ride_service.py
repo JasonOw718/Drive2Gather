@@ -77,6 +77,23 @@ def get_all_rides(page=1, size=20, starting_location=None, dropoff_location=None
         ride = ride_info[0]  # The Ride object
         driver_name = ride_info[1] or "Unknown Driver"  # The driver name, with default if None
         
+        # Get count of approved passengers for this ride
+        approved_passenger_count = PassengerRide.query.filter_by(
+            ride_id=ride.ride_id,
+            status="approved"
+        ).count()
+        
+        # Skip rides that are fully booked (all seats are taken)
+        if ride.passenger_count == approved_passenger_count:
+            continue
+        
+        # Calculate available seats
+        available_seats = ride.passenger_count - approved_passenger_count
+        
+        # Skip rides that don't have enough available seats for the requested number
+        if seats and seats.isdigit() and available_seats < int(seats):
+            continue
+        
         formatted_rides.append({
             "rideID": ride.ride_id,
             "driverID": ride.driver_id,
@@ -85,6 +102,8 @@ def get_all_rides(page=1, size=20, starting_location=None, dropoff_location=None
             "requestTime": ride.request_time.isoformat(),
             "status": ride.status,
             "Passenger_count": ride.passenger_count,
+            "approvedPassengerCount": approved_passenger_count,  # Add approved passenger count
+            "availableSeats": available_seats,  # Add available seats count
             "driverName": driver_name
         })
     
@@ -196,6 +215,15 @@ def approve_ride_request(ride_id, passenger_id, driver_id):
         
         if not passenger_ride:
             return None, f"No pending ride request found for passenger {passenger_id} on ride {ride_id}"
+        
+        # Check if current approved passengers + 1 would exceed the ride's capacity
+        current_approved_count = PassengerRide.query.filter_by(
+            ride_id=ride_id,
+            status="approved"
+        ).count()
+        
+        if current_approved_count >= ride.passenger_count:
+            return None, f"Cannot approve request: Ride has reached maximum capacity of {ride.passenger_count} passengers"
         
         # Update the status to approved
         passenger_ride.status = "approved"
@@ -696,12 +724,13 @@ def get_user_ride_history(user_id, page=1, size=20, role=None):
         }
     }
 
-def get_ride_details_with_passengers(ride_id):
+def get_ride_details_with_passengers(ride_id, user_role='passenger'):
     """
     Get detailed information about a ride including all passenger details
     
     Args:
         ride_id (int): ID of the ride to retrieve
+        user_role (str): Role of the requesting user ('driver' or 'passenger')
         
     Returns:
         dict: Dictionary containing ride details and passenger information
@@ -729,10 +758,14 @@ def get_ride_details_with_passengers(ride_id):
     # Get passenger details for each passenger ride
     passengers = []
     for passenger_ride in passenger_rides:
-        # Only include passengers with 'approved' status
-        if passenger_ride.status != 'approved':
-            continue
-            
+        # Filter passengers based on user role
+        if user_role == 'driver':
+            # For drivers, include approved/accepted/active/completed passengers
+            # but filter out pending, rejected, cancelled statuses
+            if passenger_ride.status not in ['approved', 'accepted', 'active', 'completed']:
+                continue
+        
+        # Get passenger information
         passenger = User.query.get(passenger_ride.user_id)
         if passenger:
             # Create a unique identifier for this passenger ride 

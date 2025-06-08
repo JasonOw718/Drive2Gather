@@ -145,10 +145,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { ref, computed, onMounted } from 'vue'
 import { usePassengerInputStore } from '../../../stores/passengerInput'
 import { rideService } from '../../../services/api'
+import { useToastStore } from '../../../stores/toast'
 
 const route = useRoute()
 const router = useRouter()
 const passengerInputStore = usePassengerInputStore()
+const toastStore = useToastStore()
 
 // Get ride ID from route params
 const rideId = route.params.id
@@ -156,9 +158,9 @@ const rideId = route.params.id
 // Force hide button regardless of route - set to true to always hide
 const forceHideButton = false
 
-// Check if we're coming from ride history
+// Check if we're coming from ride history or filter
 const fromHistory = computed(() => {
-  return route.query.from_history === 'true' || forceHideButton
+  return route.query.from_history === 'true' || route.query.from_filter === 'true' || forceHideButton
 })
 
 // Reactive state
@@ -287,17 +289,11 @@ async function requestRide() {
     
     console.log('Ride request successful:', response.data)
     
-    // Navigate to booking confirmation
-    router.push({
-      path: '/ridebooked',
-      query: {
-        ride_id: rideId,
-        from: ride.value.startingLocation,
-        to: ride.value.dropoffLocation,
-        time: departureTime.value,
-        seats: passengerInputStore.seats || 1
-      }
-    })
+    // Show success message
+    toastStore.success('Ride requested successfully')
+    
+    // Redirect directly to homepage
+    router.push('/')
   } catch (err) {
     console.error('Error requesting ride:', err)
     
@@ -337,6 +333,7 @@ async function completeRide() {
     router.push({
       name: 'RideComplete',
       query: {
+        rideId: rideId,
         from: ride.value.startingLocation,
         to: ride.value.dropoffLocation,
         driverName: ride.value.driverName,

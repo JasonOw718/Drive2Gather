@@ -90,7 +90,7 @@ export const useUserStore = defineStore('user', {
         
         // Show success toast
         const toastStore = useToastStore();
-        toastStore.success('Driver registration successful! Please log in.');
+        toastStore.info('Your driver account is under review. You will be notified once approved.');
         
         router.push('/login');
         return true;

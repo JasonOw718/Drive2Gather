@@ -47,7 +47,7 @@
             </div>
           </div>
           
-          <img src="../../../../assets/images/qrcode.jpg" alt="Donation QR Code" class="w-64 h-64 object-contain mb-4" />
+          <img :src="qrCodeImage" alt="Donation QR Code" class="w-64 h-64 object-contain mb-4" />
           <div class="text-[#5D7285] font-semibold">Scan to receive donations</div>
           <p class="text-sm text-gray-500 mt-2 text-center">Share this QR code with your passengers to receive tips</p>
         </div>
@@ -93,6 +93,7 @@
 import { ref, onMounted } from 'vue'
 import { useUserStore } from '../../../stores/user'
 import RightNavbar from '../rightnavbar.vue'
+import qrCodeImage from '../../../assets/images/qrcode.jpg'
 
 const userStore = useUserStore()
 const userProfile = ref({})

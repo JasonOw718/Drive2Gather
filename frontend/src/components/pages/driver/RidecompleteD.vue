@@ -24,10 +24,10 @@
           </div>
           <div class="flex flex-col justify-between h-24 flex-1">
             <div class="mb-2 ml-4 text-left">
-              <span class="text-lg font-medium text-left" style="font-family: 'Poppins', sans-serif; color: #303030;">{{ from }}</span>
+              <span class="text-lg font-medium text-left" style="font-family: 'Poppins', sans-serif; color: #303030;">{{ ride.from }}</span>
             </div>
             <div class="mt-auto ml-4 text-left">
-              <span class="text-lg font-medium text-left" style="font-family: 'Poppins', sans-serif; color: #303030;">{{ to }}</span>
+              <span class="text-lg font-medium text-left" style="font-family: 'Poppins', sans-serif; color: #303030;">{{ ride.to }}</span>
             </div>
           </div>
         </div>
@@ -35,7 +35,7 @@
   
       <!-- Passenger Information Section -->
       <div class="w-full flex flex-row items-center justify-between mt-4 mb-2 px-2">
-        <img :src="passenger?.avatar || '/src/assets/images/image.png'" alt="Passenger Avatar" class="w-14 h-14 rounded-full object-cover border-0 border-[#C77DFF]" />
+        <img :src="passenger?.avatar || defaultAvatar" alt="Passenger Avatar" class="w-14 h-14 rounded-full object-cover border-0 border-[#C77DFF]" />
         <div class="flex flex-col flex-1 ml-4">
           <div class="text-base font-medium text-left" style="font-family: 'Poppins', sans-serif; color: #000000;">{{ passenger?.name || 'Passenger' }}</div>
           <div class="text-sm mt-1 text-left" style="font-family: 'Poppins', sans-serif; color: #8C8C8C;">{{ passenger?.phone || '' }}</div>
@@ -61,11 +61,13 @@
   </template>
   
   <script setup>
-  import { ref } from 'vue'
+  import { ref, onMounted } from 'vue'
   import { useRouter } from 'vue-router'
   import { useUserStore } from '../../../stores/user.js'
+  import defaultAvatar from '../../../assets/images/image.png'
   
   const router = useRouter()
+  const userStore = useUserStore()
   
   // Define props for the component
   const props = defineProps({
@@ -79,13 +81,26 @@
     }
   })
   
-  // Get passenger info from user store
-  const userStore = useUserStore()
-  const passenger = userStore.currentUser
+  // Create a ride object
+  const ride = ref({
+    from: props.from,
+    to: props.to
+  })
+  
+  // Get passenger info from user store or route params
+  const passenger = ref({
+    name: 'Passenger',
+    phone: '',
+    avatar: defaultAvatar
+  })
   
   function goHome() {
     router.push({ name: 'Home' })
   }
+
+  onMounted(() => {
+    console.log('RidecompleteD mounted with props:', props)
+  })
   </script>
   
   <style scoped>

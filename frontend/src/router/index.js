@@ -14,8 +14,6 @@ import CreateRide from '../components/pages/driver/CreateRide.vue'
 import RideList from '../components/pages/passanger/RideList.vue'
 import RideDetail from '../components/pages/passanger/RideDetail.vue'
 import RideDetailD from '../components/pages/driver/RideDetailD.vue'
-import Ridebooked from '../components/pages/passanger/Ridebooked.vue'
-import Otwpage from '../components/pages/passanger/Otwpage.vue'
 import Dropoff from '../components/pages/driver/Dropoff.vue'
 import Report_Psg from '../components/pages/passanger/Report_Psg.vue'
 import RidecompleteD from '../components/pages/driver/RidecompleteD.vue'
@@ -27,15 +25,27 @@ import ChatRoom from '../components/pages/shared/ChatRoom.vue'
 import RideFilter from '../components/pages/RideFilter.vue'
 
 import AdminLayout from '../components/pages/admin/AdminLayout.vue'
+import AdminLogin from '../components/pages/admin/AdminLogin.vue'
 import DriverRegistrationList from '../components/pages/admin/component/DriverRegistrationList.vue'
 import DriverManagement from '../components/pages/admin/component/DriverManagement.vue'
 import DriverDetails from '../components/pages/admin/component/DriverDetails.vue'
 import ReportList from '../components/pages/admin/component/ReportList.vue'
 import ReportDetails from '../components/pages/admin/component/ReportDetails.vue'
+import AccountManagement from '../components/pages/admin/component/AccountManagement.vue'
 // import AdminSettings from '../components/pages/admin/component/settings.vue'
 // Placeholder for RideComplete
 
 import { useUserStore } from '../stores/user'
+import { useAdminAuthStore } from '../stores/adminAuth'
+import { useDonorAuthStore } from '../stores/donorAuth'
+
+// Import donor components
+import DonorDonation from '../components/pages/donor/DonorDonation.vue'
+import DonorDonationComplete from '../components/pages/donor/DonorDonationComplete.vue'
+import DonorDashboard from '../components/pages/donor/DonorDashboard.vue'
+import DonorHistory from '../components/pages/donor/DonorHistory.vue'
+import DonorLayout from '../components/pages/donor/DonorLayout.vue'
+import DonorProfile from '../components/pages/donor/DonorProfile.vue'
 
 const routes = [
   {
@@ -162,16 +172,6 @@ const routes = [
     })
   },
   {
-    path: '/ridebooked',
-    name: 'Ridebooked',
-    component: Ridebooked
-  },
-  {
-    path: '/otw',
-    name: 'Otwpage',
-    component: Otwpage
-  },
-  {
     path: '/ride-complete',
     name: 'RideComplete',
     component: RidecompleteP,
@@ -182,7 +182,8 @@ const routes = [
       driverAvatar: route.query.driverAvatar,
       carPlate: route.query.carPlate,
       driverCarType: route.query.driverCarType,
-      driverId: route.query.driverId
+      driverId: route.query.driverId,
+      rideId: route.query.rideId  // Add rideId to props
     })
   },
   {
@@ -202,7 +203,13 @@ const routes = [
   {
     path: '/Reportpage',
     name: 'ReportPsg',
-    component: Report_Psg
+    component: Report_Psg,
+    props: route => ({
+      rideId: route.query.rideId,
+      driverName: route.query.driverName,
+      carPlate: route.query.carPlate,
+      driverCarType: route.query.driverCarType
+    })
   },
   {
     path: '/Reportpage-driver',
@@ -233,15 +240,16 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/admin',
+    path: '/portal/login',
+    name: 'AdminLogin',
+    component: AdminLogin
+  },
+  {
+    path: '/portal/admin',
     component: AdminLayout,
-    redirect: '/admin/driver-registration',
+    redirect: '/portal/admin/account-management',
+    meta: { requiresAdminAuth: true },
     children: [
-      {
-        path: 'driver-registration',
-        name: 'Driver_Registration_List',
-        component: DriverRegistrationList
-      },
       {
         path: 'driver-management',
         name: 'Driver_Management',
@@ -262,7 +270,16 @@ const routes = [
         name: 'Report_Details',
         component: ReportDetails
       },
-      
+      {
+        path: 'account-management',
+        name: 'Account_Management',
+        component: AccountManagement
+      },
+      {
+        path: 'account-detail/:id',
+        name: 'Account_Details',
+        component: () => import('../components/pages/admin/component/AccountDetails.vue')
+      }
     ]
   },
   {
@@ -276,6 +293,53 @@ const routes = [
     component: () => import('../components/pages/RideHistory.vue'),
     meta: { requiresAuth: true }
   },
+  // Donor routes
+  {
+    path: '/portal/donor',
+    component: DonorLayout,
+    redirect: '/portal/donor/dashboard',
+    meta: { requiresDonorAuth: true },
+    children: [
+      {
+        path: 'dashboard',
+        name: 'DonorDashboard',
+        component: DonorDashboard,
+      },
+      {
+        path: 'donate',
+        name: 'DonorDonation',
+        component: DonorDonation,
+      },
+      {
+        path: 'donation-complete',
+        name: 'DonorDonationComplete',
+        component: DonorDonationComplete,
+      },
+      {
+        path: 'history',
+        name: 'DonorHistory',
+        component: DonorHistory,
+      },
+      {
+        path: 'profile',
+        name: 'DonorProfile',
+        component: DonorProfile,
+      }
+    ]
+  },
+  // Legacy route redirects
+  {
+    path: '/admin/login',
+    redirect: '/portal/login'
+  },
+  {
+    path: '/admin/:pathMatch(.*)*',
+    redirect: to => `/portal/admin/${to.params.pathMatch}`
+  },
+  {
+    path: '/donor/:pathMatch(.*)*',
+    redirect: to => `/portal/donor/${to.params.pathMatch}`
+  }
 ]
 
 const router = createRouter({
@@ -285,8 +349,51 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
+  const adminAuthStore = useAdminAuthStore()
+  const donorAuthStore = useDonorAuthStore()
   const isAuthenticated = userStore.isAuthenticated
+  const isAdminAuthenticated = adminAuthStore.isAdminAuthenticated
+  const isDonorAuthenticated = donorAuthStore.isDonorAuthenticated
   
+  // Initialize auth on first load
+  if (from.name === undefined) {
+    adminAuthStore.initializeAdminAuth();
+    donorAuthStore.initializeDonorAuth();
+  }
+  
+  // Handle donor routes
+  if (to.path.startsWith('/portal/donor')) {
+    if (to.matched.some(record => record.meta.requiresDonorAuth)) {
+      if (!isDonorAuthenticated) {
+        next({ name: 'AdminLogin' });
+        return;
+      }
+    }
+  }
+  
+  // Handle admin routes
+  if (to.path.startsWith('/portal/admin')) {
+    // Admin login page is public
+    if (to.name === 'AdminLogin') {
+      // If already authenticated as admin, redirect to admin dashboard
+      if (isAdminAuthenticated) {
+        next({ path: '/portal/admin/account-management' });
+      } else {
+        next();
+      }
+      return;
+    }
+    
+    // Check if admin authentication is required
+    if (to.matched.some(record => record.meta.requiresAdminAuth)) {
+      if (!isAdminAuthenticated) {
+        next({ name: 'AdminLogin' });
+        return;
+      }
+    }
+  }
+  
+  // Handle regular user routes
   // Check if route requires authentication
   if (to.meta.requiresAuth && !isAuthenticated) {
     next({ name: 'LoginRegister' })
@@ -294,9 +401,9 @@ router.beforeEach((to, from, next) => {
   }
   
   // These routes don't require authentication
-  const publicRoutes = ['Login', 'LoginRegister', 'RegisterP', 'RegisterD', 'ForgotPassword']
+  const publicRoutes = ['Login', 'LoginRegister', 'RegisterP', 'RegisterD', 'ForgotPassword', 'AdminLogin']
   
-  if (!isAuthenticated && !publicRoutes.includes(to.name) && !to.meta.requiresAuth) {
+  if (!isAuthenticated && !to.path.startsWith('/portal') && !publicRoutes.includes(to.name) && !to.meta.requiresAuth) {
     // Redirect to login if trying to access a protected route while not authenticated
     next({ name: 'LoginRegister' })
   } else {

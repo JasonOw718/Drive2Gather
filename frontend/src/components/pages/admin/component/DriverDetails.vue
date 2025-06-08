@@ -70,20 +70,25 @@
 <script setup>
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useDriverStore } from "../../../stores/driver";
+import { useDriverStore } from "../../../../stores/driver";
+import { useToastStore } from "../../../../stores/toast";
 
 const route = useRoute();
 const router = useRouter();
 const driverStore = useDriverStore();
+const toastStore = useToastStore();
 const driverId = parseInt(route.params.id);
 const driver = computed(() => driverStore.drivers.find(d => d.id === driverId));
 
 function approveDriver() {
     driverStore.approveDriver(driverId);
-    router.push({ name: 'Driver_Registration_List' });
+    toastStore.success(`Driver ${driver.value.name} has been approved successfully`);
+    router.push({ name: 'Account_Management' });
 }
+
 function rejectDriver() {
     driverStore.rejectDriver(driverId);
-    router.push({ name: 'Driver_Registration_List' });
+    toastStore.error(`Driver ${driver.value.name} has been rejected`);
+    router.push({ name: 'Account_Management' });
 }
 </script>

@@ -57,12 +57,12 @@
       <!-- Submit Button -->
       <button
         class="w-full py-3 px-4 rounded-full shadow-md text-base font-bold transition-all duration-300 mb-2 bg-[#C77DFF] text-white hover:bg-opacity-90 cursor-pointer"
-        :disabled="!issueType"
-        :class="{ 'bg-gray-300 text-gray-400 cursor-not-allowed': !issueType }"
+        :disabled="!issueType || isSubmitting"
+        :class="{ 'bg-gray-300 text-gray-400 cursor-not-allowed': !issueType || isSubmitting }"
         style="max-width: 100%; font-family: 'Roboto', sans-serif;"
         @click="onSubmit"
       >
-        Submit
+        {{ isSubmitting ? 'Submitting...' : 'Submit' }}
       </button>
   
       <!-- Success Message Overlay -->
@@ -75,19 +75,27 @@
   </template>
   
   <script setup>
-  import { ref } from 'vue'
-  import { useRouter } from 'vue-router'
+  import { ref, onMounted } from 'vue'
+  import { useRouter, useRoute } from 'vue-router'
   import { rideList } from '../../../stores/rideList.js'
   import { useUserStore } from '../../../stores/user.js'
+  import { feedbackService } from '../../../services/api'
+  import { useToastStore } from '../../../stores/toast'
+
   const router = useRouter()
-  const ride = rideList[0] // For demo, use the first ride
+  const route = useRoute()
+  const toastStore = useToastStore()
+  
+  // Get the ride ID from query parameters or route
+  const rideId = route.query.rideId || parseInt(route.params.rideId) || (rideList.length > 0 ? rideList[0].id : null)
   
   const issueType = ref('')
   const description = ref('')
   const showSuccess = ref(false)
+  const isSubmitting = ref(false)
 
   const userStore = useUserStore()
-  const passenger = userStore.currentUser
+  const passenger = userStore.currentUser || { name: 'Passenger Name', phone: 'Not available' }
   
   const issueOptions = [
     'Rude Behavior',
@@ -100,24 +108,46 @@
     'Other (please specify)'
   ]
   
-  function onSubmit() {
+  async function onSubmit() {
     if (!issueType.value) return
-    // Store the report data (for demo, just log it)
-    const report = {
-      driverName: ride.driverName,
-      carPlate: ride.carPlate,
-      carModel: ride.driverCarType,
-      issueType: issueType.value,
-      description: description.value
+    
+    if (!rideId) {
+      toastStore.error('Missing ride ID. Cannot submit report.')
+      return
     }
-    // You can push this to a store or send to backend here
-    console.log('Report submitted:', report)
-    showSuccess.value = true
-    setTimeout(() => {
-      showSuccess.value = false
-      router.push({ name: 'Otwpage' })
-    }, 1200)
+    
+    try {
+      isSubmitting.value = true
+      
+      // Submit feedback to the backend
+      await feedbackService.submitFeedback({
+        rideId: parseInt(rideId),
+        issueType: issueType.value,
+        description: description.value
+      })
+      
+      showSuccess.value = true
+      setTimeout(() => {
+        showSuccess.value = false
+        router.push({ name: 'Home' })
+      }, 1200)
+    } catch (error) {
+      console.error('Error submitting report:', error)
+      toastStore.error('Failed to submit report. Please try again.')
+    } finally {
+      isSubmitting.value = false
+    }
   }
+
+  onMounted(() => {
+    console.log('Report_D_side mounted with route params:', route.params)
+    console.log('Report_D_side mounted with route query:', route.query)
+    console.log('Ride ID:', rideId)
+    
+    if (!rideId) {
+      toastStore.warning('Missing ride ID. Report may not be submitted correctly.')
+    }
+  })
   </script>
   
   <style scoped>
@@ -134,6 +164,5 @@
     word-break: break-word;
     overflow-wrap: break-word;
   }
-  
   </style>
   

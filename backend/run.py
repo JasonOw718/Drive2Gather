@@ -11,8 +11,14 @@ config = Config()
 app = Flask(__name__)
 app.config.from_mapping(config.settings)
 
-# Enable CORS
-CORS(app)
+# Enable CORS with specific configurations that work for all requests including OPTIONS/preflight
+CORS(app, 
+     resources={r"/*": {"origins": "*"}},
+     supports_credentials=True,
+     methods=["GET", "HEAD", "POST", "OPTIONS", "PUT", "DELETE"],
+     allow_headers=["Content-Type", "Authorization", "Accept"],
+     expose_headers=["Access-Control-Allow-Origin"],
+     max_age=600)
 
 # Initialize extensions
 db.init_app(app)
@@ -28,14 +34,16 @@ from app.routes.ride_routes import ride_bp
 from app.routes.notification_routes import notification_bp
 from app.routes.chat_routes import chat_bp
 from app.routes.donation_routes import donation_bp
+from app.routes.admin_routes import admin_bp
+from app.routes.feedback_routes import feedback_bp
 
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(ride_bp, url_prefix='/api/rides')
 app.register_blueprint(notification_bp, url_prefix='/api/notifications')
 app.register_blueprint(chat_bp, url_prefix='/api/chats')
 app.register_blueprint(donation_bp, url_prefix='/api/donations')
-
-
+app.register_blueprint(admin_bp, url_prefix='/api/admin')
+app.register_blueprint(feedback_bp, url_prefix='/api/feedback')
 
 
 # Sample route to test the application

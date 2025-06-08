@@ -1,5 +1,6 @@
 import jwt
 import logging
+import inspect
 from functools import wraps
 from flask import request, jsonify, current_app, g
 from app.models import User, UserRole
@@ -87,6 +88,12 @@ def token_required(f):
             # Also set in Flask g object for compatibility
             g.user = user
             
+            # Check if the function expects a current_user parameter
+            sig = inspect.signature(f)
+            if 'current_user' in sig.parameters:
+                # Pass the authenticated user as the current_user parameter
+                kwargs['current_user'] = user
+            
             return f(*args, **kwargs)
         except Exception as e:
             logger.error(f"Error processing token: {str(e)}")
@@ -99,7 +106,7 @@ def role_required(roles):
         @wraps(f)
         @token_required
         def decorated_function(*args, **kwargs):
-            user = request.user
+            user = request.user  # Always use request.user for role checks
             user_roles = UserRole.query.filter_by(user_id=user.user_id).all()
             user_role_names = [role.role_name for role in user_roles]
             

@@ -2,6 +2,19 @@
   <div>
     <RightNavbar />
     <div class="min-h-screen bg-white px-6 pt-6 pb-20" style="max-width: 420px; margin: 0 auto;">
+      <!-- Back Button -->
+      <div class="flex items-center mb-4 mt-2">
+        <button
+          class="w-10 h-10 flex items-center justify-center rounded-lg bg-[#F5F5F5] border border-gray-200 shadow-md"
+          @click="$router.back()"
+          aria-label="Back"
+        >
+          <span class="w-6 h-6 text-primary">
+            <font-awesome-icon icon="fa-arrow-left" class="text-[#C77DFF]" />
+          </span>
+        </button>
+      </div>
+      
       <!-- Header -->
       <div class="mb-6">
         <h1 class="text-2xl font-bold text-left text-[#303030] mb-2">Filter Rides</h1>
@@ -304,7 +317,11 @@ function getStatusClass(status) {
 
 // View ride details
 function viewRideDetails(ride) {
-  router.push({ name: 'RideDetail', params: { id: ride.rideID } });
+  router.push({ 
+    name: 'RideDetail', 
+    params: { id: ride.rideID },
+    query: { from_filter: 'true' }
+  });
 }
 </script>
 

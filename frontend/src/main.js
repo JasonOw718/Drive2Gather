@@ -9,6 +9,7 @@ import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { registerIcons } from './fontawesome'
 import { useUserStore } from './stores/user'
+import { useAdminAuthStore } from './stores/adminAuth'
 
 registerIcons()
 
@@ -21,6 +22,10 @@ app.use(router)
 // Initialize authentication state before mounting the app
 const userStore = useUserStore(pinia)
 userStore.initializeAuth()
+
+// Initialize admin authentication state
+const adminAuthStore = useAdminAuthStore(pinia)
+adminAuthStore.initializeAdminAuth()
 
 app.component('font-awesome-icon', FontAwesomeIcon)
 app.mount('#app')

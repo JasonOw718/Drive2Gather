@@ -9,7 +9,7 @@ class Feedback(db.Model):
     feedback_id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('user.user_id'), nullable=False)
     ride_id = Column(Integer, ForeignKey('ride.ride_id'), nullable=False)
-    rating = Column(Integer)  # 1-5 star rating
+    issue_type = Column(String(100))  # Type of issue reported
     comments = Column(Text)
     comment_time = Column(DateTime, default=datetime.utcnow)
     

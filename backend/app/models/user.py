@@ -2,6 +2,7 @@ from . import db
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
+from werkzeug.security import generate_password_hash, check_password_hash
 
 class User(db.Model):
     __tablename__ = 'user'
@@ -18,6 +19,10 @@ class User(db.Model):
     messages = relationship("Message", backref="user")
     passenger_rides = relationship("PassengerRide", backref="user")
     donations = relationship("Donation", foreign_keys="Donation.user_id", backref="user")
+    
+    def check_password(self, password):
+        """Verify the password against its hash"""
+        return check_password_hash(self.password, password)
 
 class UserRole(db.Model):
     __tablename__ = 'user_role'
@@ -59,6 +64,7 @@ class Driver(db.Model):
     car_number = Column(String(20))
     car_type = Column(String(50))
     car_color = Column(String(30))
+    verification_status = Column(String(20), default="pending")  # pending, approved, rejected
     
     user = relationship("User", backref="driver_profile")
     rides = relationship("Ride", backref="driver_user", foreign_keys="Ride.driver_id")

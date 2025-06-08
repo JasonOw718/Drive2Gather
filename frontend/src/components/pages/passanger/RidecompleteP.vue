@@ -39,10 +39,22 @@
         <div class="flex flex-col flex-1 ml-4">
           <div class="text-base font-medium text-left" style="font-family: 'Poppins', sans-serif; color: #000000;">{{ ride.driverName }}</div>
           <div class="text-sm mt-1 text-left" style="font-family: 'Poppins', sans-serif; color: #8C8C8C;">{{ ride.carPlate }} • {{ ride.driverCarType }}</div>
+          <div class="text-xs mt-1 text-left" style="font-family: 'Poppins', sans-serif; color: #8C8C8C;">Ride ID: {{ ride.rideId || 'Not Available' }}</div>
         </div>
       </div>
   
-      <div class="w-full text-right">
+      <div class="w-full text-right flex justify-end gap-4 mb-4">
+        <router-link :to="{ 
+          name: 'ReportPsg',
+          query: {
+            rideId: ride.rideId,
+            driverName: ride.driverName,
+            carPlate: ride.carPlate,
+            driverCarType: ride.driverCarType
+          }
+        }" class="text-sm font-medium underline" style="font-family: 'Poppins', sans-serif; color: #C77DFF;">
+          Report this driver
+        </router-link>
         <router-link :to="{ 
           name: 'Donation', 
           params: { driverId: driverId },
@@ -52,30 +64,24 @@
             carPlate: ride.carPlate,
             driverCarType: ride.driverCarType
           }
-        }" class="ml-2 text-sm font-medium underline" style="font-family: 'Poppins', sans-serif; color: #C77DFF;">Tip this driver</router-link>
+        }" class="text-sm font-medium underline" style="font-family: 'Poppins', sans-serif; color: #C77DFF;">
+          Tip this driver
+        </router-link>
       </div>
           
       <div class="flex-1"></div>
   
-      <!-- Action Button -->
-      <button
-        class="w-full py-3 px-4 rounded-full shadow-md text-base font-bold transition-all duration-300 mb-2 bg-[#C77DFF] text-white hover:bg-opacity-90 cursor-pointer"
-        style="max-width: 100%; font-family: 'Roboto', sans-serif;"
-        @click="goHome"
-      >
-        Confirm
-      </button>
-  
+      <!-- Action Button Removed -->
       
-    
     </div>
   </template>
   
   <script setup>
-  import { useRouter } from 'vue-router'
+  import { useRouter, useRoute } from 'vue-router'
   import { ref, onMounted } from 'vue'
   
   const router = useRouter()
+  const route = useRoute()
   
   // Define props
   const props = defineProps({
@@ -106,6 +112,10 @@
     driverId: {
       type: [String, Number],
       default: '1'
+    },
+    rideId: {
+      type: [String, Number],
+      default: null
     }
   })
   
@@ -117,7 +127,8 @@
     driverAvatar: props.driverAvatar,
     carPlate: props.carPlate,
     driverCarType: props.driverCarType,
-    driverId: props.driverId
+    driverId: props.driverId,
+    rideId: props.rideId
   })
   
   function goHome() {
@@ -125,7 +136,17 @@
   }
   
   onMounted(() => {
-    console.log('Ride details:', ride.value)
+    console.log('RidecompleteP mounted with props:', props)
+    console.log('RidecompleteP mounted with route query:', route.query)
+    console.log('RidecompleteP mounted with route params:', route.params)
+    
+    // Ensure rideId is in the ride object
+    if (!ride.value.rideId && route.query.rideId) {
+      ride.value.rideId = route.query.rideId
+      console.log('Updated ride.rideId from query:', ride.value.rideId)
+    }
+    
+    console.log('Final ride details:', ride.value)
   })
   </script>
   

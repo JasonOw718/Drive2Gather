@@ -51,14 +51,22 @@
         </div>
         <!-- Second Row: Driver & Seats -->
         <div class="flex items-center mt-2">
-          <img :src="ride.driverAvatar" alt="Driver Avatar" class="w-9 h-9 rounded-full object-cover mr-3 border border-gray-200" />
+          <img :src="defaultAvatar" alt="Driver Avatar" class="w-9 h-9 rounded-full object-cover mr-3 border border-gray-200" />
           <div class="flex flex-col flex-1">
             <div class="text-sm font-medium text-[#303030] text-left" style="font-family: 'Poppins', sans-serif; font-weight: 500;">{{ ride.driverName }}</div>
             <div class="flex items-center gap-1 mt-1">
-              <template v-for="n in ride.seatAvailable" :key="'seat-' + n">
+              <!-- Occupied seats (gray) -->
+              <template v-for="n in ride.seatFilled" :key="'filled-' + n">
                 <font-awesome-icon
                   icon="fa-solid fa-chair"
-                  :class="n <= ride.seatFilled ? 'text-[#C77DFF] text-lg' : 'text-[#8C8C8C] text-lg'"
+                  class="text-gray-400 text-lg"
+                />
+              </template>
+              <!-- Available seats (purple) -->
+              <template v-for="n in (ride.Passenger_count - ride.seatFilled)" :key="'available-' + n">
+                <font-awesome-icon
+                  icon="fa-solid fa-chair"
+                  class="text-[#C77DFF] text-lg"
                 />
               </template>
             </div>
@@ -75,6 +83,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { usePassengerInputStore } from '../../../stores/passengerInput'
 import { rideService } from '../../../services/api'
+import defaultAvatar from '../../../assets/images/image.png'
 
 const router = useRouter()
 const route = useRoute()
@@ -127,9 +136,10 @@ async function loadRides() {
       from: ride.startingLocation,
       to: ride.dropoffLocation,
       driverName: ride.driverName,
-      driverAvatar: '@/assets/images/image.png', // Default avatar
+      driverAvatar: defaultAvatar, // Use the imported image
       seatAvailable: ride.Passenger_count,
-      seatFilled: 0, // This would need to be calculated from passengers if available
+      Passenger_count: ride.Passenger_count, // Total seats available
+      seatFilled: ride.approvedPassengerCount || 0, // Number of current passengers from approved count
       driverPhone: '123-456-7890', // This would come from the driver details
       driverCarType: 'Sedan', // This would come from the driver details
       carPlate: 'ABC123', // This would come from the driver details

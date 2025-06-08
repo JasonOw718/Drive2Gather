@@ -416,8 +416,14 @@ def get_ride_details_with_passengers(ride_id):
     # Get the user ID from the authenticated user
     user_id = request.user.user_id
     
-    # Get detailed ride information
-    ride_details = ride_service.get_ride_details_with_passengers(ride_id)
+    # Determine user role by checking if they're a driver for this ride
+    user_role = 'passenger'  # Default role
+    ride = Ride.query.get(ride_id)
+    if ride and ride.driver_id == user_id:
+        user_role = 'driver'
+    
+    # Get detailed ride information based on user role
+    ride_details = ride_service.get_ride_details_with_passengers(ride_id, user_role)
     
     if not ride_details:
         return jsonify({"error": "Ride not found"}), 404

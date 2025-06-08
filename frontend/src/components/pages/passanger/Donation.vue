@@ -31,11 +31,14 @@
     </div>
 
     <!-- Driver Information -->
-    <div v-else class="flex flex-row items-center mb-6 w-full">
-      <img :src="driver.driverAvatar || '@/assets/images/default-avatar.png'" alt="Driver Avatar" class="w-8 h-8 rounded-full object-cover border-0 border-[#C77DFF] mr-4" />
+    <div v-else class="flex flex-row items-center mb-6 w-full bg-[#F8F0FF] p-4 rounded-lg shadow-sm">
+      <img :src="driver.driverAvatar || defaultAvatar" alt="Driver Avatar" class="w-12 h-12 rounded-full object-cover border border-[#C77DFF] mr-4" />
       <div class="flex flex-col flex-1">
-        <div class="text-base font-medium text-left" style="font-family: 'Poppins', sans-serif; color: #000000;">{{ driver.driverName }}</div>
-        <div class="text-sm mt-1 text-left" style="font-family: 'Poppins', sans-serif; color: #8C8C8C;">{{ driver.carPlate }} • {{ driver.driverCarType }}</div>
+        <div class="text-lg font-semibold text-left text-black" style="font-family: 'Poppins', sans-serif;">{{ driver.driverName }}</div>
+        <div class="text-sm mt-1 text-left flex items-center" style="font-family: 'Poppins', sans-serif; color: #8C8C8C;">
+          <font-awesome-icon icon="fa-solid fa-car" class="mr-2 text-[#C77DFF]" />
+          {{ driver.carPlate }} • {{ driver.driverCarType }}
+        </div>
       </div>
     </div>
 
@@ -89,7 +92,7 @@
       <div class="text-base font-medium mb-2 text-left" style="font-family: 'Poppins', sans-serif; color: #303030;">Add a message (optional)</div>
       <textarea 
         v-model="description" 
-        class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#C77DFF]"
+        class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#C77DFF] bg-white text-black"
         placeholder="Write a thank you message..."
         rows="3"
         style="font-family: 'Poppins', sans-serif; resize: none;"
@@ -121,6 +124,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '../../../stores/user'
 import { donationService } from '../../../services/api'
 import api from '../../../services/api'
+import defaultAvatar from '../../../assets/images/image.png'
 
 const router = useRouter()
 const route = useRoute()
@@ -151,26 +155,28 @@ function decrement() { if (tipAmount.value > 1) tipAmount.value-- }
 
 // Fetch driver information
 async function fetchDriverInfo() {
-  isLoading.value = true
-  loadError.value = ''
+  isLoading.value = true;
+  loadError.value = '';
   
   try {
-    // Get driver profile using the driver ID
-    const response = await api.get(`/auth/users/${driverId}`)
-    const driverData = response.data
+    // Instead of fetching from API, use default driver information
+    // or information from route parameters if available
+    const driverName = route.query.driverName || 'Driver';
     
     driver.value = {
       driverID: driverId,
-      driverName: driverData.name || 'Driver',
-      driverAvatar: driverData.avatar || '@/assets/images/default-avatar.png',
-      carPlate: driverData.carPlate || 'Unknown',
-      driverCarType: driverData.carType || 'Vehicle'
-    }
+      driverName: driverName,
+      driverAvatar: defaultAvatar,
+      carPlate: route.query.carPlate || 'Unknown',
+      driverCarType: route.query.carType || 'Vehicle'
+    };
+    
+    console.log('Using default driver object:', driver.value);
   } catch (err) {
-    console.error('Error fetching driver info:', err)
-    loadError.value = 'Failed to load driver information. Please try again.'
+    console.error('Error setting up driver info:', err);
+    loadError.value = 'Failed to set up driver information. Please try again.';
   } finally {
-    isLoading.value = false
+    isLoading.value = false;
   }
 }
 

@@ -64,6 +64,12 @@ def login_user(email, password):
     user_role = UserRole.query.filter_by(user_id=user.user_id).first()
     role_name = user_role.role_name if user_role else "passenger"
 
+    # If the user is a driver, check verification status
+    if role_name == "driver":
+        driver = Driver.query.filter_by(user_id=user.user_id).first()
+        if driver and driver.verification_status != "approved":
+            return None, f"Your driver account is still {driver.verification_status}. Please wait for admin approval."
+
     # Generate token
     token = generate_token(user)
     

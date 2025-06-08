@@ -58,7 +58,7 @@
 
 <script setup>
 import { useRouter } from "vue-router";
-import { useDriverStore } from '../../../stores/driver.js';
+import { useDriverStore } from '../../../../stores/driver.js';
 
 const router = useRouter();
 const driverStore = useDriverStore();

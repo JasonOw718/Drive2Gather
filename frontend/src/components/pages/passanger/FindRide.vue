@@ -2,8 +2,19 @@
 <RightNavbar />
 
   <div class="bg-white flex flex-col px-6 pt-[max(2.5rem,env(safe-area-inset-top))] pb-[max(env(safe-area-inset-bottom),2.5rem)]" style="max-width: 420px; margin: 0 auto;">
+    <!-- Back Button -->
+    <button
+      class="absolute top-6 left-6 w-10 h-10 flex items-center justify-center rounded-lg bg-[#F5F5F5] z-20 border border-gray-200"
+      @click="$router.back()"
+      aria-label="Back"
+    >
+      <span class="w-6 h-6 text-primary">
+        <font-awesome-icon icon="fa-arrow-left" class="text-[#C77DFF]" />
+      </span>
+    </button>
+    
     <!-- Main Title -->
-    <div class="text-2xl font-bold text-left mb-8 text-[#000000] mt-1">Find a Ride</div>
+    <div class="text-2xl font-bold text-left mb-8 text-[#000000] mt-10">Find a Ride</div>
 
     <!-- Where are you going? -->
     <div class="mb-6">

@@ -2,8 +2,19 @@
   <div>
     <RightNavbar />
     <div class="min-h-screen bg-white px-6 pt-6 pb-20" style="max-width: 420px; margin: 0 auto;">
+      <!-- Back Button -->
+      <button
+        class="absolute top-6 left-6 w-10 h-10 flex items-center justify-center rounded-lg bg-[#F5F5F5] z-20 border border-gray-200"
+        @click="$router.back()"
+        aria-label="Back"
+      >
+        <span class="w-6 h-6 text-primary">
+          <font-awesome-icon icon="fa-arrow-left" class="text-[#C77DFF]" />
+        </span>
+      </button>
+      
       <!-- Header -->
-      <div class="mb-6">
+      <div class="mb-6 pt-8">
         <h1 class="text-2xl font-bold text-left text-[#303030] mb-2">Ride History</h1>
         <p class="text-[#8C8C8C] text-left">
           View all your past and upcoming rides
@@ -215,13 +226,13 @@
               <div>{{ formatDate(ride.requestTime) }}</div>
               <div>
                 <span v-if="userStore.currentUser?.role === 'passenger'">Driver: {{ ride.driverName || 'Unknown' }}</span>
-                <span v-else>Passengers: {{ ride.passengerCount }}</span>
+                <span v-else>Seats: {{ ride.passengerCount }}</span>
               </div>
             </div>
 
             <!-- Action Button for active rides -->
             <button 
-              v-if="['pending', 'approved', 'accepted', 'active'].includes(ride.status)" 
+              v-if="['pending', 'approved', 'accepted', 'active'].includes(ride.status) || userStore.currentUser?.role === 'driver'" 
               @click="viewRideDetails(ride)" 
               class="mt-3 w-full py-2 rounded-full text-[#C77DFF] border border-[#C77DFF] text-sm font-medium hover:bg-[#F8F0FF] transition"
             >
@@ -240,34 +251,40 @@
         </div>
 
         <!-- Pagination -->
-        <div v-if="rides.length > 0" class="mt-6 flex justify-between items-center">
-          <button 
-            @click="prevPage" 
-            :disabled="pagination.currentPage <= 1" 
-            :class="[
-              'px-3 py-1 rounded text-sm',
-              pagination.currentPage <= 1 
-                ? 'text-gray-400 cursor-not-allowed' 
-                : 'text-[#C77DFF] hover:bg-[#F8F0FF]'
-            ]"
-          >
-            Previous
-          </button>
-          <span class="text-sm text-gray-600">
-            Page {{ pagination.currentPage }} of {{ pagination.totalPages }}
-          </span>
-          <button 
-            @click="nextPage" 
-            :disabled="!pagination.nextPage" 
-            :class="[
-              'px-3 py-1 rounded text-sm',
-              !pagination.nextPage 
-                ? 'text-gray-400 cursor-not-allowed' 
-                : 'text-[#C77DFF] hover:bg-[#F8F0FF]'
-            ]"
-          >
-            Next
-          </button>
+        <div v-if="rides.length > 0" class="mt-6 flex justify-center items-center">
+          <div class="flex items-center bg-gray-100 rounded-full p-1 shadow-sm">
+            <button 
+              @click="prevPage" 
+              :disabled="pagination.currentPage <= 1" 
+              :class="[
+                'px-4 py-2 rounded-full text-sm font-medium transition-colors',
+                pagination.currentPage <= 1 
+                  ? 'text-gray-400 cursor-not-allowed' 
+                  : 'text-[#C77DFF] hover:bg-white hover:shadow-sm'
+              ]"
+            >
+              <font-awesome-icon icon="fa-chevron-left" class="mr-1" />
+              Prev
+            </button>
+            
+            <span class="px-3 py-1 text-sm font-medium text-gray-700">
+              {{ pagination.currentPage }} / {{ pagination.totalPages }}
+            </span>
+            
+            <button 
+              @click="nextPage" 
+              :disabled="!pagination.nextPage" 
+              :class="[
+                'px-4 py-2 rounded-full text-sm font-medium transition-colors',
+                !pagination.nextPage 
+                  ? 'text-gray-400 cursor-not-allowed' 
+                  : 'text-[#C77DFF] hover:bg-white hover:shadow-sm'
+              ]"
+            >
+              Next
+              <font-awesome-icon icon="fa-chevron-right" class="ml-1" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -305,6 +322,21 @@ const loadRideHistory = async () => {
   error.value = null;
   
   try {
+    // If we're authenticated but don't have user info, try to refresh it
+    if (userStore.isAuthenticated && (!userStore.currentUser || !userStore.currentUser.id)) {
+      console.log('User info missing but authenticated. Attempting to refresh profile...');
+      await userStore.fetchUserProfile();
+      console.log('Refreshed user profile:', userStore.currentUser);
+    }
+    
+    // Check if user is authenticated
+    if (!userStore.isAuthenticated || !userStore.currentUser) {
+      console.error('User not authenticated. Redirecting to login...');
+      error.value = 'Please log in to view your ride history.';
+      setTimeout(() => router.push('/login'), 2000);
+      return;
+    }
+    
     // Use the user-history endpoint with pagination
     const response = await api.get('/rides/user-history', {
       params: {
@@ -326,7 +358,18 @@ const loadRideHistory = async () => {
     pagination.value.prevPage = response.data.page > 1;
   } catch (err) {
     console.error('Error loading ride history:', err);
-    error.value = 'Failed to load ride history. Please try again.';
+    
+    // Check for authentication errors
+    if (err.response?.status === 401 || err.response?.status === 403) {
+      error.value = 'Authentication error. Please try logging in again.';
+      // Redirect to login after a short delay
+      setTimeout(() => {
+        userStore.logout();
+        router.push('/login');
+      }, 2000);
+    } else {
+      error.value = 'Failed to load ride history. Please try again.';
+    }
   } finally {
     loading.value = false;
   }
@@ -337,8 +380,31 @@ const loadPendingRequests = async () => {
   loadingRequests.value = true;
   
   try {
-    const userId = userStore.currentUser?.id || 1; // Fallback to ID 1 if not available
-    const role = userStore.currentUser?.role || 'passenger';
+    // Get current user information
+    let currentUser = userStore.currentUser;
+    
+    // Debug user information
+    console.log('Current user state:', currentUser);
+    console.log('User ID:', currentUser?.id);
+    console.log('User role:', currentUser?.role);
+    
+    // If user info is missing but we're authenticated, try to refresh the profile
+    if (userStore.isAuthenticated && (!currentUser || !currentUser.id)) {
+      console.log('User info missing but authenticated. Attempting to refresh profile...');
+      currentUser = await userStore.fetchUserProfile();
+      console.log('Refreshed user profile:', currentUser);
+    }
+    
+    // Check if user information is available
+    if (!currentUser || !currentUser.id) {
+      console.error('User information not available. Check if user is logged in properly.');
+      error.value = 'Please log in to view your ride requests.';
+      loadingRequests.value = false;
+      return;
+    }
+    
+    const userId = currentUser.id;
+    const role = currentUser.role || 'passenger';
     
     let endpoint = '';
     if (role === 'driver') {
@@ -347,10 +413,27 @@ const loadPendingRequests = async () => {
       endpoint = `/rides/passenger/${userId}/requests`;
     }
     
+    console.log(`Making request to: ${endpoint} for user ID: ${userId} with role: ${role}`);
+    
     const response = await api.get(endpoint);
     requests.value = response.data.requests || [];
   } catch (err) {
     console.error('Error loading ride requests:', err);
+    console.error('Error details:', err.response?.data || err.message);
+    
+    // Check for specific authentication errors
+    if (err.response?.status === 401 || err.response?.status === 403) {
+      error.value = 'Authentication error. Please try logging in again.';
+      // Redirect to login after a short delay
+      setTimeout(() => {
+        userStore.logout();
+        router.push('/login');
+      }, 2000);
+    } else {
+      error.value = 'Failed to load ride requests. Please try again.';
+    }
+    
+    requests.value = [];
   } finally {
     loadingRequests.value = false;
   }
@@ -460,17 +543,46 @@ const viewRideDetails = (ride) => {
   });
 };
 
-// Load data on component mount
-onMounted(() => {
-  loadRideHistory();
-  loadPendingRequests();
-});
-
-// Watch for tab changes to reload data if needed
+// Watch for tab changes
 watch(activeTab, (newTab) => {
   if (newTab === 'history') {
     loadRideHistory();
   } else if (newTab === 'pending') {
+    loadPendingRequests();
+  }
+});
+
+// Check authentication and load data on mount
+onMounted(async () => {
+  console.log('RideHistory component mounted');
+  
+  // Ensure auth is initialized
+  if (!userStore.isAuthenticated) {
+    console.log('User not authenticated, initializing auth...');
+    userStore.initializeAuth();
+  }
+  
+  // If we have a token but no user data, try to fetch the profile
+  if (userStore.token && (!userStore.currentUser || !userStore.currentUser.id)) {
+    console.log('We have a token but missing user data, fetching profile...');
+    try {
+      await userStore.fetchUserProfile();
+      console.log('User profile after refresh:', userStore.currentUser);
+    } catch (err) {
+      console.error('Failed to fetch user profile:', err);
+      error.value = 'Authentication error. Please try logging in again.';
+      setTimeout(() => {
+        userStore.logout();
+        router.push('/login');
+      }, 2000);
+      return;
+    }
+  }
+  
+  // Load data based on active tab
+  if (activeTab.value === 'history') {
+    loadRideHistory();
+  } else {
     loadPendingRequests();
   }
 });

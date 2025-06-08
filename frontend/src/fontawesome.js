@@ -35,6 +35,9 @@ import {
   faHistory,
   faComments,
   faPaperPlane,
+  faRightFromBracket,
+  // Add spinner icon
+  faSpinner,
   // Add toast notification icons
   faExclamationCircle,
   faExclamationTriangle,
@@ -78,6 +81,9 @@ export function registerIcons() {
     faHistory,
     faComments,
     faPaperPlane,
+    faRightFromBracket,
+    // Add spinner icon
+    faSpinner,
     // Add toast notification icons
     faExclamationCircle,
     faExclamationTriangle,

@@ -27,7 +27,7 @@
             <img :src="driverAvatar || '@/assets/images/default-avatar.png'" alt="Driver" class="w-full h-full object-cover" />
           </div>
           <div class="text-left">
-            <h3 class="font-medium">{{ driverName }}</h3>
+            <h3 class="font-medium text-black">{{ driverName }}</h3>
             <p class="text-sm text-gray-500">{{ carInfo }}</p>
           </div>
         </div>
@@ -35,14 +35,14 @@
       
       <!-- Donation Details -->
       <div class="w-full flex justify-between items-center mb-2">
-        <h3 class="text-lg font-medium">Tips</h3>
+        <h3 class="text-lg font-medium text-black">Tips</h3>
         <span class="text-lg font-medium text-[#C77DFF]">RM {{ tipAmount }}</span>
       </div>
       
       <!-- Payment Method -->
       <div class="w-full flex justify-between items-center mb-8">
-        <h3 class="text-sm text-gray-600">Payment Method</h3>
-        <span class="text-sm font-medium">
+        <h3 class="text-sm text-black">Payment Method</h3>
+        <span class="text-sm font-medium text-black">
           <span class="mr-1" v-if="paymentMethod === 'paypal'">🅿️</span>
           <span class="mr-1" v-else>💳</span>
           {{ paymentMethod === 'paypal' ? 'PayPal' : 'Stripe' }}

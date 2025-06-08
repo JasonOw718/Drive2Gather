@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { useUserStore } from '@/stores/user';
 import { useToastStore } from '@/stores/toast';
+import { useAdminAuthStore } from '@/stores/adminAuth';
 
 // Create axios instance with base URL
 const api = axios.create({
@@ -15,14 +16,31 @@ const api = axios.create({
 // Request interceptor for API calls
 api.interceptors.request.use(
   config => {
-    const userStore = useUserStore();
-    const token = userStore.token;
+    // Check if this is an admin endpoint
+    const isAdminEndpoint = config.url.includes('/admin/');
     
-    if (token) {
-      console.log(`Adding token to request: ${token.substring(0, 15)}...`);
-      config.headers['Authorization'] = `Bearer ${token}`;
+    if (isAdminEndpoint) {
+      // For admin endpoints, use admin token
+      const adminAuthStore = useAdminAuthStore();
+      const token = adminAuthStore.adminToken;
+      
+      if (token) {
+        console.log(`Adding admin token to request: ${token.substring(0, 15)}...`);
+        config.headers['Authorization'] = `Bearer ${token}`;
+      } else {
+        console.log('No admin token available for admin request');
+      }
     } else {
-      console.log('No token available for request');
+      // For regular endpoints, use user token
+      const userStore = useUserStore();
+      const token = userStore.token;
+      
+      if (token) {
+        console.log(`Adding user token to request: ${token.substring(0, 15)}...`);
+        config.headers['Authorization'] = `Bearer ${token}`;
+      } else {
+        console.log('No user token available for request');
+      }
     }
     
     return config;
@@ -128,6 +146,52 @@ export const notificationService = {
     () => api.put('/notifications/read-all'),
     'All notifications marked as read'
   )
+};
+
+export const feedbackService = {
+  // Submit feedback/report about a ride
+  submitFeedback: (feedbackData) => {
+    const userStore = useUserStore();
+    const token = userStore.token;
+    
+    // Create FormData object - this will ensure the request uses
+    // application/x-www-form-urlencoded instead of application/json
+    // which will avoid preflight for simple POST requests
+    const formData = new URLSearchParams();
+    formData.append('ride_id', feedbackData.rideId);
+    formData.append('issue_type', feedbackData.issueType);
+    formData.append('comments', feedbackData.description || '');
+    formData.append('token', token);
+    
+    return withToast(
+      () => axios.post('http://127.0.0.1:5000/api/feedback', formData, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }),
+      'Report submitted successfully!'
+    );
+  },
+  
+  // Get all feedback reports (admin only) - explicitly use admin token
+  getAllFeedback: () => {
+    const adminAuthStore = useAdminAuthStore();
+    const token = adminAuthStore.adminToken;
+    
+    if (!token) {
+      const toastStore = useToastStore();
+      toastStore.error('Admin authentication required');
+      return Promise.reject(new Error('Admin authentication required'));
+    }
+    
+    return axios.get('http://127.0.0.1:5000/api/feedback/admin/feedbacks', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    });
+  }
 };
 
 export const rideService = {
