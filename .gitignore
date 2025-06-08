@@ -1,0 +1,69 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.pyc
+*.pyo
+
+# Virtual environment
+venv/
+env/
+ENV/
+.venv/
+
+# Environment variables
+.env
+.env.*
+
+# Flask-related
+instance/
+*.db
+*.sqlite3
+
+# Pytest and test coverage
+.coverage
+htmlcov/
+.tox/
+nosetests.xml
+test-output/
+
+# VS Code settings
+.vscode/
+
+# MacOS and Linux
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Pycharm
+.idea/
+
+# Docker
+*.pid
+*.tar
+*.bak
+
+# mypy, pylint, etc.
+.mypy_cache/
+.pytest_cache/
+.cache/
+*.mo
+*.pot
+
+# Compiled frontend assets (if any)
+node_modules/
+dist/
+build/
+
+# Certificate and key files
+*.pem
+*.key
+*.crt
+*.cer
+*.der
+*.p12
+*.pfx
