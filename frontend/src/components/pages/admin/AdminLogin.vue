@@ -2,7 +2,7 @@
   <div class="min-h-screen flex items-center justify-center bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
       <div>
-        <img src="../../../assets/images/logo.png" alt="Logo" class="mx-auto h-16">
+        <img src="@/assets/images/logo.png" alt="Logo" class="mx-auto h-16">
         <h2 class="mt-6 text-center text-3xl font-bold text-[#C77DFF]">{{ isLoginMode ? 'Login' : 'Sign Up as Donor' }}</h2>
         <p class="mt-2 text-center text-gray-600">
           {{ isLoginMode 
@@ -219,10 +219,10 @@ async function onSubmit() {
         
         if (success) {
           // Check if there's a redirect query param
-          const redirect = router.currentRoute.value.query.redirect;
-          if (redirect) {
-            // Use the specific redirect path that was passed
-            router.push(decodeURIComponent(redirect));
+          const redirectFrom = router.currentRoute.value.query.redirectFrom;
+          if (redirectFrom === 'admin') {
+            // Redirect to admin dashboard or the specific page they were trying to access
+            router.push('/portal/admin/account-management');
           } else {
             router.push('/portal/admin/account-management');
           }
@@ -235,10 +235,10 @@ async function onSubmit() {
         
         if (success) {
           // Check if there's a redirect query param
-          const redirect = router.currentRoute.value.query.redirect;
-          if (redirect) {
-            // Use the specific redirect path that was passed
-            router.push(decodeURIComponent(redirect));
+          const redirectFrom = router.currentRoute.value.query.redirectFrom;
+          if (redirectFrom === 'donor') {
+            // Redirect to donor dashboard or the specific page they were trying to access
+            router.push('/portal/donor/dashboard');
           } else {
             router.push('/portal/donor/dashboard');
           }

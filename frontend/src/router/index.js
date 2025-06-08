@@ -47,6 +47,9 @@ import DonorHistory from '../components/pages/donor/DonorHistory.vue'
 import DonorLayout from '../components/pages/donor/DonorLayout.vue'
 import DonorProfile from '../components/pages/donor/DonorProfile.vue'
 
+// Get the base URL from Vite environment
+const base = import.meta.env.BASE_URL || '/Drive2Gather/';
+
 const routes = [
   {
     path: '/',
@@ -339,57 +342,89 @@ const routes = [
   {
     path: '/donor/:pathMatch(.*)*',
     redirect: to => `/portal/donor/${to.params.pathMatch}`
+  },
+  // 404 route - catch all for GitHub Pages SPA routing
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/'
   }
 ]
 
-// Get base URL from Vite environment
-const base = import.meta.env.BASE_URL || '/'
-
 const router = createRouter({
   history: createWebHistory(base),
-  routes
+  routes,
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) {
+      return savedPosition;
+    } else {
+      return { top: 0 };
+    }
+  }
 })
 
-// Route guards
 router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
   const adminAuthStore = useAdminAuthStore()
   const donorAuthStore = useDonorAuthStore()
-
-  // Check if the route requires authentication
-  if (to.matched.some(record => record.meta.requiresAuth)) {
-    if (!userStore.isLoggedIn) {
-      next({
-        path: '/login-register',
-        query: { redirect: encodeURIComponent(to.fullPath) }
-      })
-      return
+  const isAuthenticated = userStore.isAuthenticated
+  const isAdminAuthenticated = adminAuthStore.isAdminAuthenticated
+  const isDonorAuthenticated = donorAuthStore.isDonorAuthenticated
+  
+  // Initialize auth on first load
+  if (from.name === undefined) {
+    userStore.initializeAuth();
+    adminAuthStore.initializeAdminAuth();
+    donorAuthStore.initializeDonorAuth();
+  }
+  
+  // Handle donor routes
+  if (to.path.startsWith('/portal/donor')) {
+    if (to.matched.some(record => record.meta.requiresDonorAuth)) {
+      if (!isDonorAuthenticated) {
+        next({ name: 'AdminLogin', query: { redirectFrom: 'donor' } });
+        return;
+      }
     }
   }
-
-  // Check if the route requires admin authentication
-  if (to.matched.some(record => record.meta.requiresAdminAuth)) {
-    if (!adminAuthStore.isAuthenticated) {
-      next({
-        path: '/portal/login',
-        query: { redirect: encodeURIComponent(to.fullPath) }
-      })
-      return
+  
+  // Handle admin routes
+  if (to.path.startsWith('/portal/admin')) {
+    // Admin login page is public
+    if (to.name === 'AdminLogin') {
+      // If already authenticated as admin, redirect to admin dashboard
+      if (isAdminAuthenticated) {
+        next({ path: '/portal/admin/account-management' });
+      } else {
+        next();
+      }
+      return;
+    }
+    
+    // Check if admin authentication is required
+    if (to.matched.some(record => record.meta.requiresAdminAuth)) {
+      if (!isAdminAuthenticated) {
+        next({ name: 'AdminLogin', query: { redirectFrom: 'admin' } });
+        return;
+      }
     }
   }
-
-  // Check if the route requires donor authentication
-  if (to.matched.some(record => record.meta.requiresDonorAuth)) {
-    if (!donorAuthStore.isAuthenticated) {
-      next({
-        path: '/portal/login',
-        query: { redirect: encodeURIComponent(to.fullPath) }
-      })
-      return
-    }
+  
+  // Handle regular user routes
+  // Check if route requires authentication
+  if (to.meta.requiresAuth && !isAuthenticated) {
+    next({ name: 'LoginRegister', query: { redirect: to.fullPath } });
+    return;
   }
-
-  next()
+  
+  // These routes don't require authentication
+  const publicRoutes = ['Login', 'LoginRegister', 'RegisterP', 'RegisterD', 'ForgotPassword', 'AdminLogin']
+  
+  if (!isAuthenticated && !to.path.startsWith('/portal') && !publicRoutes.includes(to.name) && !to.meta.requiresAuth) {
+    // Redirect to login if trying to access a protected route while not authenticated
+    next({ name: 'LoginRegister', query: { redirect: to.fullPath } });
+  } else {
+    next()
+  }
 })
 
 export default router

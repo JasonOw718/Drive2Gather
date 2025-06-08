@@ -35,49 +35,49 @@ export const useDriverStore = defineStore('driver', () => {
   }
   
   async function fetchAllDrivers() {
-    const toastStore = useToastStore()
+      const toastStore = useToastStore()
     loading.value = true
     error.value = null
-    
-    try {
-      const response = await api.get('/admin/drivers')
       
-      if (response.data && response.data.drivers) {
-        // Convert API drivers to the format expected by the frontend
-        const apiDrivers = response.data.drivers.map(driver => ({
-          id: driver.id,
-          name: driver.name,
-          email: driver.email,
-          phone: driver.phone,
-          carPlate: driver.car_number,
-          carType: driver.car_type,
-          seatAvailable: 2, // Default value
-          status: 'activate', // Assume all drivers from API are activated
-          avatar: '/src/assets/images/image.png', // Default avatar
-          licenseImages: ['/src/assets/images/carphoto.jpg', '/src/assets/images/carphoto.jpg'], // Default images
-          carPhotos: [
-            '/src/assets/images/carphoto.jpg',
-            '/src/assets/images/carphoto.jpg',
-            '/src/assets/images/carphoto.jpg',
-            '/src/assets/images/carphoto.jpg',
-          ] // Default images
-        }))
+      try {
+      const response = await api.get('/admin/drivers')
         
-        // Replace mock data with API data while preserving any local changes
-        // First keep any pending or rejected drivers (these might be local only)
+        if (response.data && response.data.drivers) {
+          // Convert API drivers to the format expected by the frontend
+          const apiDrivers = response.data.drivers.map(driver => ({
+            id: driver.id,
+            name: driver.name,
+            email: driver.email,
+            phone: driver.phone,
+            carPlate: driver.car_number,
+            carType: driver.car_type,
+            seatAvailable: 2, // Default value
+            status: 'activate', // Assume all drivers from API are activated
+            avatar: '/src/assets/images/image.png', // Default avatar
+            licenseImages: ['/src/assets/images/carphoto.jpg', '/src/assets/images/carphoto.jpg'], // Default images
+            carPhotos: [
+              '/src/assets/images/carphoto.jpg',
+              '/src/assets/images/carphoto.jpg',
+              '/src/assets/images/carphoto.jpg',
+              '/src/assets/images/carphoto.jpg',
+            ] // Default images
+          }))
+          
+          // Replace mock data with API data while preserving any local changes
+          // First keep any pending or rejected drivers (these might be local only)
         const pendingOrRejected = drivers.value.filter(d => d.status !== 'activate')
-        
-        // Then add the API drivers (all marked as activated)
+          
+          // Then add the API drivers (all marked as activated)
         drivers.value = [...pendingOrRejected, ...apiDrivers]
-      }
-    } catch (error) {
-      console.error('Failed to fetch drivers:', error)
+        }
+      } catch (error) {
+        console.error('Failed to fetch drivers:', error)
       error.value = error.response?.data?.error || 'Failed to load drivers'
       toastStore.error(error.value)
-    } finally {
+      } finally {
       loading.value = false
+      }
     }
-  }
   
   function approveDriver(id) {
     const driver = drivers.value.find(d => d.id === id)

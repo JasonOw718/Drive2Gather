@@ -13,7 +13,7 @@ app = Flask(__name__)
 app.config.from_mapping(config.settings)
 
 # Enable CORS with specific configurations that work for all requests including OPTIONS/preflight
-CORS(app)
+CORS(app, resources={r"/*": {"origins": ["http://localhost:5173", "https://jasonow718.github.io"]}})
 
 # Initialize extensions
 db.init_app(app)

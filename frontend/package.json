@@ -1,5 +1,5 @@
 {
-  "name": "Drive2Gather",
+  "name": "Ride2Gather",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -7,8 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "setup-env": "node setup-env.js",
-    "predeploy": "npm run setup-env && npm run build",
+    "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {

@@ -98,7 +98,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, nextTick, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../../../stores/user'
 import { chatService, rideService } from '../../../services/api'
@@ -122,7 +122,7 @@ const messagesContainer = ref(null)
 
 // Get current user ID
 const currentUserId = computed(() => {
-  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  const user = userStore.currentUser || JSON.parse(localStorage.getItem('user') || '{}')
   const userId = user.id || user.user_id || user.userId
   return userId
 })
@@ -133,6 +133,16 @@ async function loadChatData() {
   error.value = null
   
   try {
+    // Ensure we're authenticated
+    if (!userStore.isAuthenticated) {
+      userStore.initializeAuth()
+      if (!userStore.isAuthenticated) {
+        error.value = 'Please log in to access the chat'
+        router.push('/login-register')
+        return
+      }
+    }
+    
     // Get ride details
     const rideResponse = await rideService.getRideById(rideId.value)
     rideDetails.value = rideResponse.data
@@ -147,6 +157,7 @@ async function loadChatData() {
     // Set up polling for new messages
     startMessagePolling()
   } catch (err) {
+    console.error('Chat load error:', err)
     error.value = 'Failed to load chat. Please try again.'
   } finally {
     loading.value = false
@@ -158,6 +169,15 @@ async function loadMessages() {
   if (!chatId.value) return
   
   try {
+    // Ensure we're authenticated before making the request
+    if (!userStore.token) {
+      userStore.initializeAuth()
+      if (!userStore.token) {
+        error.value = 'Authentication token is missing'
+        return
+      }
+    }
+    
     const response = await chatService.getMessages(chatId.value)
     messages.value = response.data.messages
     
@@ -165,7 +185,13 @@ async function loadMessages() {
     await nextTick()
     scrollToBottom()
   } catch (err) {
-    // Error handled silently
+    console.error('Failed to load messages:', err)
+    // No need to show this error to the user, handled silently
+    
+    // If it's an auth error, try refreshing token
+    if (err.response && err.response.status === 401) {
+      userStore.initializeAuth()
+    }
   }
 }
 
@@ -175,15 +201,19 @@ async function sendMessage() {
   
   try {
     // Make sure we have a valid token
-    const token = localStorage.getItem('token')
-    if (!token) {
-      sendError.value = 'You need to be logged in to send messages'
-      return
+    if (!userStore.token) {
+      userStore.initializeAuth()
+      if (!userStore.token) {
+        sendError.value = 'You need to be logged in to send messages'
+        return
+      }
     }
     
-    const response = await chatService.sendMessage(chatId.value, newMessage.value)
+    const messageToBeSent = newMessage.value
+    newMessage.value = '' // Clear immediately for better UX
+    
+    const response = await chatService.sendMessage(chatId.value, messageToBeSent)
     messages.value.push(response.data)
-    newMessage.value = ''
     
     // Scroll to bottom after sending
     await nextTick()
@@ -193,7 +223,17 @@ async function sendMessage() {
     
     // Check if it's an authentication error
     if (err.response && err.response.status === 401) {
-      sendError.value = 'Authentication error. Please refresh the page and try again.'
+      sendError.value = 'Authentication error. Trying to reconnect...'
+      userStore.initializeAuth()
+      // Wait a moment then try again
+      setTimeout(() => {
+        sendError.value = null
+        if (userStore.token) {
+          loadMessages()
+        } else {
+          sendError.value = 'Failed to reconnect. Please refresh the page.'
+        }
+      }, 1000)
     } else {
       sendError.value = err.response?.data?.error || 'Failed to send message. Please try again.'
     }
@@ -222,11 +262,18 @@ function startMessagePolling() {
     clearInterval(messagePollingInterval)
   }
   
-  // Set up new interval to check for messages every 5 seconds
+  // Set up new interval to check for messages every 8 seconds
+  // Longer interval reduces chances of token expiration issues
   messagePollingInterval = setInterval(async () => {
     if (!chatId.value) return
     
     try {
+      // Skip polling if we're not authenticated
+      if (!userStore.isAuthenticated) {
+        console.log('Skipping poll - not authenticated')
+        return
+      }
+      
       const response = await chatService.getMessages(chatId.value)
       if (response.data.messages.length > messages.value.length) {
         messages.value = response.data.messages
@@ -236,14 +283,24 @@ function startMessagePolling() {
         scrollToBottom()
       }
     } catch (err) {
-      // Error handled silently
+      console.log('Poll error:', err.message || 'Unknown error')
+      // If it's an auth error, try refreshing the token
+      if (err.response && err.response.status === 401) {
+        userStore.initializeAuth()
+      }
     }
-  }, 5000)
+  }, 8000) // Use 8s instead of 5s to reduce API calls
 }
 
 // Clean up on component unmount
 onMounted(() => {
   loadChatData()
+})
+
+onUnmounted(() => {
+  if (messagePollingInterval) {
+    clearInterval(messagePollingInterval)
+  }
 })
 
 // Watch for changes to messages and scroll to bottom

@@ -35,7 +35,7 @@
   
       <!-- Driver Information Section -->
       <div class="w-full flex flex-row items-center justify-between mt-4 mb-2 px-2">
-        <img :src="ride.driverAvatar" alt="Driver Avatar" class="w-14 h-14 rounded-full object-cover border-0 border-[#C77DFF]" />
+        <img src="@/assets/images/image.png" alt="Driver Avatar" class="w-14 h-14 rounded-full object-cover border-0 border-[#C77DFF]" />
         <div class="flex flex-col flex-1 ml-4">
           <div class="text-base font-medium text-left" style="font-family: 'Poppins', sans-serif; color: #000000;">{{ ride.driverName }}</div>
           <div class="text-sm mt-1 text-left" style="font-family: 'Poppins', sans-serif; color: #8C8C8C;">{{ ride.carPlate }} • {{ ride.driverCarType }}</div>

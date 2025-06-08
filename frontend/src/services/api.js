@@ -296,10 +296,7 @@ export const chatService = {
   getMessages: (chatId) => api.get(`/chats/${chatId}/messages`),
   
   // Send a message in a chat
-  sendMessage: (chatId, content) => withToast(
-    () => api.post(`/chats/${chatId}/messages`, { content }),
-    null // No toast for message sending to avoid spam
-  ),
+  sendMessage: (chatId, content) => api.post(`/chats/${chatId}/messages`, { content }),
   
   // Get all chats for a user
   getUserChats: (userId) => api.get(`/chats/user/${userId}/chats`),

@@ -1,7 +1,7 @@
 <template>
   <div class="max-w-3xl mx-auto bg-white rounded-2xl shadow-lg p-8">
     <div class="flex items-start mb-6">
-      <img src="../../../assets/images/heart.png" alt="Donation" class="w-16 h-16 object-contain mr-4" style="filter: drop-shadow(0 2px 8px #C77DFF33);" />
+      <img src="@/assets/images/heart.png" alt="Donation" class="w-16 h-16 object-contain mr-4" style="filter: drop-shadow(0 2px 8px #C77DFF33);" />
       <div>
         <h2 class="text-2xl font-semibold text-[#C77DFF] mb-2">Support Drive2Gather</h2>
         <p class="text-gray-600">

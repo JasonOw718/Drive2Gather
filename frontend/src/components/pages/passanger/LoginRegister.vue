@@ -2,7 +2,7 @@
   <div class="min-h-screen flex flex-col bg-white relative">
     <!-- Logo at 20-25% from top -->
     <div class="flex flex-col items-center" style="margin-top: 24vh;">
-      <img src="/src/assets/images/Logo.png" alt="Logo" class="object-contain mb-8" />
+      <img src="@/assets/images/Logo.png" alt="Logo" class="object-contain mb-8" />
     </div>
     <!-- Spacer to push footer down -->
     <div class="flex-1"></div>
