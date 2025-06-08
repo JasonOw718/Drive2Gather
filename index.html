@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/Drive2Gather/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="./vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Drive2Gather</title>
     <!-- Handle SPA routing on GitHub Pages -->
@@ -21,7 +21,32 @@
         }
       }(window.location))
     </script>
-    <script type="module" crossorigin src="/Drive2Gather/assets/index-BfegNVle.js"></script>
+    <script type="text/javascript">
+      // Redirect script specifically for GitHub Pages
+      (function() {
+        // Check if we are on GitHub Pages
+        if (window.location.hostname.includes('github.io')) {
+          // The base path is the repository name
+          const basePath = '/Drive2Gather/';
+          // Get the current path without the base path
+          const path = window.location.pathname.replace(basePath, '/');
+          
+          // Handle nested routes that 404 on GitHub Pages
+          if (!window.location.pathname.startsWith(basePath) && 
+              window.location.pathname !== '/' && 
+              !window.location.pathname.includes('index.html')) {
+            window.location.href = basePath + window.location.pathname.slice(1);
+          }
+          
+          // If at root of GitHub Pages site, prefix with base path
+          if (window.location.pathname === '/') {
+            window.location.replace(basePath);
+          }
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="/Drive2Gather/assets/index-hp38W5Rt.js"></script>
+    <link rel="modulepreload" crossorigin href="/Drive2Gather/assets/vendor-dVDV3Smk.js">
     <link rel="stylesheet" crossorigin href="/Drive2Gather/assets/index-DiFtinww.css">
   </head>
   <body>
