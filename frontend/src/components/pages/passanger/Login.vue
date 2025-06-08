@@ -141,7 +141,7 @@ async function onSubmit() {
         // Check if there's a redirect path in query params
         const redirectPath = route.query.redirect
         if (redirectPath) {
-          router.push(redirectPath)
+          router.push(decodeURIComponent(redirectPath))
         } else {
           router.push('/')
         }

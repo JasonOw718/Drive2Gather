@@ -361,7 +361,7 @@ router.beforeEach((to, from, next) => {
     if (!userStore.isLoggedIn) {
       next({
         path: '/login-register',
-        query: { redirect: to.fullPath }
+        query: { redirect: encodeURIComponent(to.fullPath) }
       })
       return
     }
@@ -372,7 +372,7 @@ router.beforeEach((to, from, next) => {
     if (!adminAuthStore.isAuthenticated) {
       next({
         path: '/portal/login',
-        query: { redirect: to.fullPath }
+        query: { redirect: encodeURIComponent(to.fullPath) }
       })
       return
     }
@@ -383,7 +383,7 @@ router.beforeEach((to, from, next) => {
     if (!donorAuthStore.isAuthenticated) {
       next({
         path: '/portal/login',
-        query: { redirect: to.fullPath }
+        query: { redirect: encodeURIComponent(to.fullPath) }
       })
       return
     }

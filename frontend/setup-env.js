@@ -1,5 +1,5 @@
 // setup-env.js
-const fs = require('fs');
+import fs from 'fs';
 
 // Get the API URL from environment variable or use default
 const apiUrl = process.env.VITE_API_BASE_URL || 'http://127.0.0.1:5000/api';

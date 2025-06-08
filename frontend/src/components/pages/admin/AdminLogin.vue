@@ -219,10 +219,10 @@ async function onSubmit() {
         
         if (success) {
           // Check if there's a redirect query param
-          const redirectFrom = router.currentRoute.value.query.redirectFrom;
-          if (redirectFrom === 'admin') {
-            // Redirect to admin dashboard or the specific page they were trying to access
-            router.push('/portal/admin/account-management');
+          const redirect = router.currentRoute.value.query.redirect;
+          if (redirect) {
+            // Use the specific redirect path that was passed
+            router.push(decodeURIComponent(redirect));
           } else {
             router.push('/portal/admin/account-management');
           }
@@ -235,10 +235,10 @@ async function onSubmit() {
         
         if (success) {
           // Check if there's a redirect query param
-          const redirectFrom = router.currentRoute.value.query.redirectFrom;
-          if (redirectFrom === 'donor') {
-            // Redirect to donor dashboard or the specific page they were trying to access
-            router.push('/portal/donor/dashboard');
+          const redirect = router.currentRoute.value.query.redirect;
+          if (redirect) {
+            // Use the specific redirect path that was passed
+            router.push(decodeURIComponent(redirect));
           } else {
             router.push('/portal/donor/dashboard');
           }
