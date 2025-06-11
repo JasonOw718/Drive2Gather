@@ -4,7 +4,7 @@
         <aside class="fixed inset-y-0 left-0 w-72 bg-[#F8F8F8] flex flex-col z-20">
             <RouterLink to="/portal/donor/dashboard" class="flex items-center gap-3 px-8 py-6">
                 <img src="@/assets/images/logo.png" alt="Logo" class="h-10" />
-                <!-- <span class="text-2xl font-bold text-white">Drive2Gather Donor</span> -->
+                <!-- <span class="text-2xl font-bold text-white">Ride2Gather Donor</span> -->
             </RouterLink>
             <nav class="flex-1 mt-6">
                 <ul class="flex flex-col gap-2">

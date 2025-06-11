@@ -30,7 +30,7 @@ def create_admin_user():
         db.create_all()
         
         # Check if admin user already exists
-        admin = User.query.filter_by(email='admin@drive2gather.com').first()
+        admin = User.query.filter_by(email='admin@ride2gather.com').first()
         
         if admin:
             # Admin already exists, exit
@@ -43,7 +43,7 @@ def create_admin_user():
         # Create user record
         admin = User(
             name='Admin User',
-            email='admin@drive2gather.com',
+            email='admin@ride2gather.com',
             password=hashed_password,
             phone_number='+60123456789',
             role='admin'

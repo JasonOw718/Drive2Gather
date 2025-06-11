@@ -3,9 +3,9 @@
     <div class="flex items-start mb-6">
       <img src="@/assets/images/heart.png" alt="Donation" class="w-16 h-16 object-contain mr-4" style="filter: drop-shadow(0 2px 8px #C77DFF33);" />
       <div>
-        <h2 class="text-2xl font-semibold text-[#C77DFF] mb-2">Support Drive2Gather</h2>
+        <h2 class="text-2xl font-semibold text-[#C77DFF] mb-2">Support Ride2Gather</h2>
         <p class="text-gray-600">
-          Your donation helps us maintain and improve Drive2Gather to provide better ride-sharing services for everyone. 
+          Your donation helps us maintain and improve Ride2Gather to provide better ride-sharing services for everyone. 
           Thank you for your support!
         </p>
       </div>
@@ -92,7 +92,7 @@
           @click="donateToSystem"
           :disabled="loading"
         >
-          {{ loading ? 'Processing...' : 'Donate to Drive2Gather!' }}
+          {{ loading ? 'Processing...' : 'Donate to Ride2Gather!' }}
         </button>
       </div>
     </div>

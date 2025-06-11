@@ -120,7 +120,7 @@ def change_password(user_id, old_password, new_password):
 def send_password_reset_email(user, token):
     """Send a password reset email to the user."""
     # Create reset URL with token
-    reset_url = f"https://drive2gather.com/reset-password?token={token}"
+    reset_url = f"https://ride2gather.com/reset-password?token={token}"
 
     # In a production environment, you would send an actual email here
     # For now, we'll just return the URL for testing purposes

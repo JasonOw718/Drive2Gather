@@ -4,7 +4,7 @@ import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/Drive2Gather/',
+  base: '/Ride2Gather/',
   plugins: [vue()],
   resolve: {
     alias: {

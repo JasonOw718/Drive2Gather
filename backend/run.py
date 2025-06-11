@@ -24,7 +24,7 @@ with app.app_context():
     db.create_all()
     
     # Create admin user if not exists
-    admin_email = "admin@drive2gather.com"
+    admin_email = "admin@ride2gather.com"
     admin = User.query.filter_by(email=admin_email).first()
     
     if not admin:
@@ -73,7 +73,7 @@ app.register_blueprint(feedback_bp, url_prefix='/api/feedback')
 # Sample route to test the application
 @app.route('/')
 def index():
-    return {'message': 'Welcome to Drive2Gather API!'}
+    return {'message': 'Welcome to Ride2Gather API!'}
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=config.get_config('DEBUG'))

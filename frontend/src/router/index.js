@@ -48,7 +48,7 @@ import DonorLayout from '../components/pages/donor/DonorLayout.vue'
 import DonorProfile from '../components/pages/donor/DonorProfile.vue'
 
 // Get the base URL from Vite environment
-const base = import.meta.env.BASE_URL || '/Drive2Gather/';
+const base = import.meta.env.BASE_URL || '/Ride2Gather/';
 
 const routes = [
   {

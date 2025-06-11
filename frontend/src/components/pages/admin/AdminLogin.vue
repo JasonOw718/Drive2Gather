@@ -7,7 +7,7 @@
         <p class="mt-2 text-center text-gray-600">
           {{ isLoginMode 
               ? 'Sign in as an admin or donor to access your dashboard' 
-              : 'Create a donor account to support Drive2Gather' 
+              : 'Create a donor account to support Ride2Gather' 
           }}
         </p>
         
@@ -274,7 +274,7 @@ async function onSubmit() {
 
 function useDemoAdmin() {
   // Hardcoded admin credentials - Use for development only!
-  email.value = 'admin@drive2gather.com';
+  email.value = 'admin@ride2gather.com';
   password.value = 'admin123';
   
   // Auto-submit after a short delay
