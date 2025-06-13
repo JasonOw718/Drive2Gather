@@ -102,6 +102,7 @@ import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../../../stores/user'
 import { chatService, rideService } from '../../../services/api'
+import { io } from 'socket.io-client'
 
 const route = useRoute()
 const router = useRouter()
@@ -119,6 +120,7 @@ const messages = ref([])
 const newMessage = ref('')
 const rideDetails = ref({})
 const messagesContainer = ref(null)
+const socket = ref(null)
 
 // Get current user ID
 const currentUserId = computed(() => {
@@ -126,6 +128,45 @@ const currentUserId = computed(() => {
   const userId = user.id || user.user_id || user.userId
   return userId
 })
+
+// Initialize Socket.IO connection
+function initializeSocket() {
+  if (socket.value) {
+    socket.value.disconnect()
+  }
+
+  // Connect to the WebSocket server
+  socket.value = io(import.meta.env.VITE_API_URL || 'http://localhost:5000', {
+    transports: ['websocket'],
+    auth: {
+      token: userStore.token
+    }
+  })
+
+  // Socket event handlers
+  socket.value.on('connect', () => {
+    console.log('Connected to WebSocket server')
+  })
+
+  socket.value.on('connect_error', (error) => {
+    console.error('Socket connection error:', error)
+    error.value = 'Failed to connect to chat server'
+  })
+
+  socket.value.on('new_message', (data) => {
+    if (data.chat_id === chatId.value) {
+      messages.value.push(data.message)
+      nextTick(() => {
+        scrollToBottom()
+      })
+    }
+  })
+
+  // Join the chat room
+  if (chatId.value) {
+    socket.value.emit('join', { chat_id: chatId.value })
+  }
+}
 
 // Load chat data
 async function loadChatData() {
@@ -154,8 +195,8 @@ async function loadChatData() {
     // Get chat messages
     await loadMessages()
     
-    // Set up polling for new messages
-    startMessagePolling()
+    // Initialize WebSocket connection
+    initializeSocket()
   } catch (err) {
     console.error('Chat load error:', err)
     error.value = 'Failed to load chat. Please try again.'
@@ -186,8 +227,6 @@ async function loadMessages() {
     scrollToBottom()
   } catch (err) {
     console.error('Failed to load messages:', err)
-    // No need to show this error to the user, handled silently
-    
     // If it's an auth error, try refreshing token
     if (err.response && err.response.status === 401) {
       userStore.initializeAuth()
@@ -213,11 +252,7 @@ async function sendMessage() {
     newMessage.value = '' // Clear immediately for better UX
     
     const response = await chatService.sendMessage(chatId.value, messageToBeSent)
-    messages.value.push(response.data)
-    
-    // Scroll to bottom after sending
-    await nextTick()
-    scrollToBottom()
+    // No need to manually add the message as it will come through the WebSocket
   } catch (err) {
     console.error('Error sending message:', err)
     
@@ -254,52 +289,14 @@ function scrollToBottom() {
   }
 }
 
-// Poll for new messages
-let messagePollingInterval = null
-function startMessagePolling() {
-  // Clear any existing interval
-  if (messagePollingInterval) {
-    clearInterval(messagePollingInterval)
-  }
-  
-  // Set up new interval to check for messages every 8 seconds
-  // Longer interval reduces chances of token expiration issues
-  messagePollingInterval = setInterval(async () => {
-    if (!chatId.value) return
-    
-    try {
-      // Skip polling if we're not authenticated
-      if (!userStore.isAuthenticated) {
-        console.log('Skipping poll - not authenticated')
-        return
-      }
-      
-      const response = await chatService.getMessages(chatId.value)
-      if (response.data.messages.length > messages.value.length) {
-        messages.value = response.data.messages
-        
-        // Scroll to bottom if new messages
-        await nextTick()
-        scrollToBottom()
-      }
-    } catch (err) {
-      console.log('Poll error:', err.message || 'Unknown error')
-      // If it's an auth error, try refreshing the token
-      if (err.response && err.response.status === 401) {
-        userStore.initializeAuth()
-      }
-    }
-  }, 8000) // Use 8s instead of 5s to reduce API calls
-}
-
 // Clean up on component unmount
 onMounted(() => {
   loadChatData()
 })
 
 onUnmounted(() => {
-  if (messagePollingInterval) {
-    clearInterval(messagePollingInterval)
+  if (socket.value) {
+    socket.value.disconnect()
   }
 })
 

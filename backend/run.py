@@ -1,9 +1,10 @@
 from flask import Flask
 from flask_cors import CORS
 from app.models import db, User, UserRole, Admin
-from app import mail
+from app import mail, create_app, socketio
 from config import Config
 from werkzeug.security import generate_password_hash
+from app import events  # Import WebSocket event handlers
 
 # Initialize Config singleton
 config = Config()
@@ -11,6 +12,7 @@ config = Config()
 # Setup Flask application
 app = Flask(__name__)
 app.config.from_mapping(config.settings)
+socketio.init_app(app, cors_allowed_origins="*")
 
 # Enable CORS with specific configurations that work for all requests including OPTIONS/preflight
 CORS(app, resources={r"/*": {"origins": ["http://localhost:5173", "https://jasonow718.github.io"]}})
@@ -76,4 +78,4 @@ def index():
     return {'message': 'Welcome to Ride2Gather API!'}
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=config.get_config('DEBUG'))
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000)

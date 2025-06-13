@@ -3,6 +3,7 @@ from app.models.message import Chat, Message
 from app.models.ride import Ride
 from app.models.user import User
 from datetime import datetime
+from app import socketio
 
 def create_chat_for_ride(ride_id):
     """
@@ -144,13 +145,22 @@ def send_message(chat_id, user_id, content):
         db.session.add(new_message)
         db.session.commit()
         
-        return {
+        # Format message data
+        message_data = {
             'message_id': new_message.message_id,
             'user_id': user_id,
             'username': user.name,
             'content': new_message.content,
             'send_time': new_message.send_time.isoformat()
-        }, None
+        }
+        
+        # Emit the new message to all clients in the chat room
+        socketio.emit('new_message', {
+            'chat_id': chat_id,
+            'message': message_data
+        }, room=f'chat_{chat_id}')
+        
+        return message_data, None
     except Exception as e:
         db.session.rollback()
         return None, f"Error sending message: {str(e)}"
