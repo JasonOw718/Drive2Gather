@@ -11,6 +11,7 @@ import { registerIcons } from './fontawesome'
 import { useUserStore } from './stores/user'
 import { useAdminAuthStore } from './stores/adminAuth'
 import { useDonorAuthStore } from './stores/donorAuth'
+import { useSocketStore } from './stores/socket'
 
 registerIcons()
 
@@ -31,6 +32,10 @@ adminAuthStore.initializeAdminAuth()
 // Initialize donor authentication state
 const donorAuthStore = useDonorAuthStore(pinia)
 donorAuthStore.initializeDonorAuth()
+
+// Initialize socket connection
+const socketStore = useSocketStore(pinia)
+socketStore.initializeSocket()
 
 app.component('font-awesome-icon', FontAwesomeIcon)
 app.mount('#app')

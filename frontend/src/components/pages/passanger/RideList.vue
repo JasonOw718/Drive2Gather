@@ -79,10 +79,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { usePassengerInputStore } from '../../../stores/passengerInput'
 import { rideService } from '../../../services/api'
+import { useSocketStore } from '../../../stores/socket'
 import defaultAvatar from '../../../assets/images/image.png'
 
 const router = useRouter()
@@ -94,6 +95,7 @@ const to = ref(route.query.to || 'To')
 const seats = ref(Number(route.query.seats) || 1)
 
 const passengerInputStore = usePassengerInputStore()
+const socketStore = useSocketStore()
 const rides = ref([])
 const loading = ref(true)
 const error = ref(null)
@@ -123,14 +125,14 @@ async function loadRides() {
       from: ride.startingLocation,
       to: ride.dropoffLocation,
       driverName: ride.driverName,
-      driverAvatar: defaultAvatar, // Use the imported image
+      driverAvatar: defaultAvatar,
       seatAvailable: ride.Passenger_count,
-      Passenger_count: ride.Passenger_count, // Total seats available
-      seatFilled: ride.approvedPassengerCount || 0, // Number of current passengers from approved count
-      driverPhone: '123-456-7890', // This would come from the driver details
-      driverCarType: 'Sedan', // This would come from the driver details
-      carPlate: 'ABC123', // This would come from the driver details
-      carPhoto: '@/assets/images/carphoto.jpg', // Default car image
+      Passenger_count: ride.Passenger_count,
+      seatFilled: ride.approvedPassengerCount || 0,
+      driverPhone: '123-456-7890',
+      driverCarType: 'Sedan',
+      carPlate: 'ABC123',
+      carPhoto: '@/assets/images/carphoto.jpg',
       driverID: ride.driverID,
       status: ride.status,
       requestTime: ride.requestTime
@@ -143,9 +145,67 @@ async function loadRides() {
   }
 }
 
+// Handle new ride updates from socket
+function handleNewRide(rideData) {
+  console.log('Handling new ride update:', rideData)
+  console.log('Current search criteria:', {
+    from: from.value,
+    to: to.value,
+    seats: seats.value
+  })
+  
+  // Check if the ride matches our search criteria
+  if (rideData.startingLocation === from.value && 
+      rideData.dropoffLocation === to.value && 
+      rideData.passengerCount >= seats.value) {
+    
+    console.log('Ride matches search criteria, adding to list')
+    // Add the new ride to the list
+    rides.value.unshift({
+      id: rideData.rideID,
+      departureTime: formatTime(rideData.requestTime),
+      from: rideData.startingLocation,
+      to: rideData.dropoffLocation,
+      driverName: rideData.driverName || 'Unknown Driver',
+      driverAvatar: defaultAvatar,
+      seatAvailable: rideData.passengerCount,
+      Passenger_count: rideData.passengerCount,
+      seatFilled: rideData.approvedPassengerCount || 0,
+      driverPhone: '123-456-7890',
+      driverCarType: 'Sedan',
+      carPlate: 'ABC123',
+      carPhoto: '@/assets/images/carphoto.jpg',
+      driverID: rideData.driverID,
+      status: rideData.status,
+      requestTime: rideData.requestTime
+    });
+  } else {
+    console.log('Ride does not match search criteria:', {
+      locationMatch: rideData.startingLocation === from.value && rideData.dropoffLocation === to.value,
+      seatsMatch: rideData.passengerCount >= seats.value
+    })
+  }
+}
+
 // Load rides when component mounts
 onMounted(() => {
+  console.log('RideList component mounted')
   loadRides();
+  
+  // Join the rides room for real-time updates
+  console.log('Joining rides room')
+  socketStore.joinRidesRoom();
+  
+  // Listen for new ride updates
+  console.log('Setting up socket event listener for new_ride')
+  socketStore.socket?.on('new_ride', handleNewRide);
+});
+
+// Clean up socket listeners when component unmounts
+onUnmounted(() => {
+  console.log('RideList component unmounting')
+  socketStore.socket?.off('new_ride', handleNewRide);
+  socketStore.leaveRidesRoom();
 });
 
 // Format display values

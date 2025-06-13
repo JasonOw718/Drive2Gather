@@ -3,6 +3,7 @@ from sqlalchemy import desc, and_, asc
 from app.utils.builders import RideBuilder, PassengerRideBuilder, Director
 from datetime import datetime, timedelta
 import logging
+from app import socketio
         
 
 def format_time_simple(dt):
@@ -526,57 +527,49 @@ def create_ride(driver_id, starting_location, dropoff_location, passenger_count,
     Create a new ride
     
     Args:
-        driver_id (int): ID of the driver
-        starting_location (str): Starting location name
-        dropoff_location (str): Dropoff location name
-        passenger_count (int): Number of passengers
-        request_time (datetime, optional): Request time. Defaults to current time if None.
+        driver_id (int): The ID of the driver
+        starting_location (str): The starting location
+        dropoff_location (str): The dropoff location
+        passenger_count (int): The number of passengers
+        request_time (datetime, optional): The requested time for the ride
         
     Returns:
         tuple: (ride_data, error)
+            - ride_data: Dictionary containing ride information if successful
+            - error: Error message if unsuccessful, None otherwise
     """
     try:
-        # Check if driver exists
-        driver = Driver.query.get(driver_id)
+        # Get driver info
+        driver = User.query.get(driver_id)
         if not driver:
             return None, f"Driver with ID {driver_id} not found"
             
-        # Use Builder pattern to create ride
-        ride_builder = RideBuilder()
-        director = Director(ride_builder)
-        
-        ride_data = {
-            'driver_id': driver_id,
-            'starting_location': starting_location,
-            'dropoff_location': dropoff_location,
-            'passenger_count': passenger_count
-        }
-        
-        if request_time:
-            ride_data['request_time'] = request_time
-        
-        # Construct the ride using the director
-        new_ride = director.construct_ride(ride_data)
+        # Create new ride
+        new_ride = Ride(
+            driver_id=driver_id,
+            starting_location=starting_location,
+            dropoff_location=dropoff_location,
+            passenger_count=passenger_count,
+            request_time=request_time or datetime.utcnow()
+        )
         
         db.session.add(new_ride)
         db.session.commit()
         
-        # Get driver name
-        driver_user = User.query.join(Driver, User.user_id == Driver.user_id)\
-                    .filter(Driver.user_id == driver_id).first()
-        driver_name = driver_user.name if driver_user else "Unknown Driver"
-        
-        # Format response
+        # Format ride data
         ride_data = {
-            "rideID": new_ride.ride_id,
-            "driverID": new_ride.driver_id,
-            "startingLocation": new_ride.starting_location,
-            "dropoffLocation": new_ride.dropoff_location,
-            "requestTime": new_ride.request_time.isoformat(),
-            "status": new_ride.status,
-            "Passenger_count": new_ride.passenger_count,
-            "driverName": driver_name
+            'rideID': new_ride.ride_id,
+            'driverID': new_ride.driver_id,
+            'driverName': driver.name,
+            'startingLocation': new_ride.starting_location,
+            'dropoffLocation': new_ride.dropoff_location,
+            'passengerCount': new_ride.passenger_count,
+            'requestTime': new_ride.request_time.isoformat(),
+            'status': new_ride.status
         }
+        
+        # Emit the new ride to all clients in the rides room
+        socketio.emit('new_ride', ride_data, room='rides')
         
         return ride_data, None
     except Exception as e:

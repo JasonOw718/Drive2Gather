@@ -27,4 +27,17 @@ def handle_leave(data):
 @socketio.on('disconnect')
 def handle_disconnect():
     """Handle client disconnection"""
-    pass  # Add any cleanup if needed 
+    pass  # Add any cleanup if needed
+
+# New event handler for ride updates
+@socketio.on('join_rides')
+def handle_join_rides():
+    """Handle client joining the rides room"""
+    join_room('rides')
+    emit('joined_rides', {'status': 'success'})
+
+@socketio.on('leave_rides')
+def handle_leave_rides():
+    """Handle client leaving the rides room"""
+    leave_room('rides')
+    emit('left_rides', {'status': 'success'}) 
