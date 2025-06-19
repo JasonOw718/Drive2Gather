@@ -6,15 +6,6 @@ from app.models import UserRole
 # Create a blueprint for feedback routes
 feedback_bp = Blueprint('feedback', __name__)
 
-@feedback_bp.route('/', methods=['OPTIONS'])
-def handle_options():
-    """Handle OPTIONS request explicitly to avoid redirect"""
-    response = make_response()
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
-    return response
-
 @feedback_bp.route('/', methods=['POST'])
 def submit_feedback():
     """Submit feedback/report about a ride"""
